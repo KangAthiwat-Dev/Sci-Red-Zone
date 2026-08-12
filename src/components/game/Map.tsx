@@ -2,46 +2,84 @@
 
 import { useEffect } from "react";
 import { useGLTF } from "@react-three/drei";
-import { RigidBody } from "@react-three/rapier";
+import {
+    RigidBody,
+} from "@react-three/rapier";
 import * as THREE from "three";
 
 export default function Map() {
-    const { scene } = useGLTF("/map/map.glb");
+    // ============================
+    // Visual Map
+    // ============================
+
+    const visual =
+        useGLTF("/map/map.glb");
+
+    // ============================
+    // Collision Map
+    // ============================
+
+    const collision =
+        useGLTF(
+            "/map/map-collision.glb",
+        );
+
+    // ============================
+    // Shadow
+    // ============================
 
     useEffect(() => {
-        scene.traverse((object) => {
-            if (object instanceof THREE.Mesh) {
-                object.castShadow = true;
-                object.receiveShadow = true;
-            }
-        });
-    }, [scene]);
+        visual.scene.traverse(
+            (object) => {
+                if (
+                    object instanceof
+                    THREE.Mesh
+                ) {
+                    object.castShadow =
+                        true;
+
+                    object.receiveShadow =
+                        true;
+                }
+            },
+        );
+    }, [visual.scene]);
 
     return (
         <>
-            {/* Map จริง */}
+            {/* =====================
+                Visual อย่างเดียว
+            ===================== */}
+
+            <primitive
+                object={visual.scene}
+                visible={false}
+            />
+
+            {/* =====================
+                Physics อย่างเดียว
+            ===================== */}
+
             <RigidBody
                 type="fixed"
                 colliders="trimesh"
-            >
-                <primitive object={scene} />
-            </RigidBody>
-
-            {/* พื้น Physics ชั่วคราว */}
-            <RigidBody
-                type="fixed"
-                colliders="cuboid"
                 includeInvisible
             >
-                <mesh
-                    position={[0, -0.5, 0]}
-                    visible={false}
-                >
-                    <boxGeometry args={[100, 1, 10]} />
-                </mesh>
+                <primitive
+                    object={
+                        collision.scene
+                    }
+                    visible={true}
+                />
             </RigidBody>
         </>
     );
 }
 
-useGLTF.preload("/map/map.glb");
+useGLTF.preload(
+    "/map/map.glb",
+);
+
+useGLTF.preload(
+    "/map/map-collision.glb",
+);

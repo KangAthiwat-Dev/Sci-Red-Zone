@@ -5,7 +5,7 @@ import { Physics } from "@react-three/rapier";
 
 import Map from "./Map";
 import Player from "./Player";
-import PushableBox from "./PushableBox";
+import ModelPrinter from "./ModelPrinter";
 
 export default function GameScene() {
   return (
@@ -44,8 +44,8 @@ export default function GameScene() {
         >
           <Map />
 
-          <PushableBox
-            position={[3, 3, -1.5]}
+          <ModelPrinter
+            position={[14, 1.65, -1.2]}
           />
 
           <Player />
