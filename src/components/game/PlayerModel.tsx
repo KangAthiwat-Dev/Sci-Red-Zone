@@ -16,18 +16,30 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 export type PlayerAnimation =
+    | "BracedHangDrop"
+    | "Climb"
+    | "CrouchedSpinting"
+    | "CrouchedStanding"
+    | "CrouchingIdle"
+    | "CrouchWalking"
+    | "HangingIdle"
+    | "HardLanding"
     | "Idle"
     | "Jog"
-    | "Run"
-    | "RunningJump"
     | "Jump"
-    | "Falling"
+    | "JumpHang"
+    | "JumpUp"
     | "Landing"
+    | "Pushing"
+    | "RunningJump"
     | "RunningSlide"
-    | "Crouch"
-    | "CrouchWalking"
-    | "Hang"
-    | "Climb";
+    | "RunJumpUp"
+    | "RunStop"
+    | "Spint"
+    | "SpintingRoll"
+    | "Vault"
+    | "WallClimp"
+    | "BracedHangCrouch";
 type PlayerModelProps = {
     animation: PlayerAnimation;
 };
@@ -38,21 +50,32 @@ type PlayerModelProps = {
 
 const CLIP_NAMES: Record<
     PlayerAnimation,
-    string
+    PlayerAnimation
 > = {
+    BracedHangDrop: "BracedHangDrop",
+    Climb: "BracedHangCrouch",
+    CrouchedSpinting: "CrouchedSpinting",
+    CrouchedStanding: "CrouchedStanding",
+    CrouchingIdle: "CrouchingIdle",
+    CrouchWalking: "CrouchWalking",
+    HangingIdle: "HangingIdle",
+    HardLanding: "HardLanding",
     Idle: "Idle",
     Jog: "Jog",
-    // ชื่อใน GLB สะกดว่า Spint
-    Run: "Spint",
-    RunningJump: "RunningJump",
     Jump: "Jump",
-    Falling: "Falling",
+    JumpHang: "JumpHang",
+    JumpUp: "JumpUp",
     Landing: "Landing",
+    Pushing: "Pushing",
+    RunningJump: "RunningJump",
     RunningSlide: "RunningSlide",
-    Crouch: "Crouch",
-    CrouchWalking: "CrouchWalking",
-    Hang: "HangingIdle",
-    Climb: "BracedHangCrouch",
+    RunJumpUp: "RunJumpUp",
+    RunStop: "RunStop",
+    Spint: "Spint",
+    SpintingRoll: "SpintingRoll",
+    Vault: "Vault",
+    WallClimp: "WallClimp",
+    BracedHangCrouch: "BracedHangCrouch",
 };
 
 // ========================================
@@ -84,11 +107,10 @@ const CLIMB_VISUAL_SETTLE_START = 0.7;
 const CLIMB_MAX_FRAME_DELTA = 0.1;
 
 /*
- * Physics Climb ใน Player ใช้เวลา 3.85 วินาที
- * คลิปใหม่สั้นกว่า จึง stretch เวลา Animation ให้จบพร้อม Body
- * โดยไม่เปลี่ยนความเร็วหรือเส้นทางของระบบปีนเดิม
+ * Physics Climb ใน Player และคลิป BracedHangCrouch ใช้เวลา 1.15 วินาที
+ * จึงเดิน clock เดียวกันเพื่อให้มือ/ตัวไม่เหลื่อมกันระหว่างปีน
  */
-const CLIMB_PLAYBACK_DURATION = 3.85;
+const CLIMB_PLAYBACK_DURATION = 1.15;
 
 const ANIMATION_FADE_DURATION = 0.15;
 /*
@@ -100,7 +122,20 @@ const CLIMB_EXIT_LOCOMOTION_FOOT_LIFT = 0;
 
 // ช่วงที่เท้าเริ่มแตะพื้นในคลิป Landing
 const LANDING_CLIP_START_TIME = 0.5;
-const SLIDE_ANIMATION_DURATION = 0.75;
+// ต้องตรงกับ SLIDE_DURATION ใน Player เพื่อให้ pose จบพร้อม physics
+const SLIDE_ANIMATION_DURATION = 0.95;
+const JUMP_HANG_ANIMATION_DURATION = 0.45;
+const HANG_DROP_ANIMATION_DURATION = 0.65;
+const JUMP_UP_ANIMATION_DURATION = 0.8;
+
+/*
+ * JumpUp เป็น in-place แล้ว แต่ pose เฟรมสุดท้ายยังพับขาไว้
+ * ทำให้ปลายเท้าที่เห็นสูงกว่า Idle ประมาณ 0.583 world units
+ * ชดเชยเฉพาะภาพช่วงวางตัวบน Platform แล้วคืนค่าใน crossfade ถัดไป
+ */
+const JUMP_UP_VISUAL_SETTLE_START = 0.6;
+const JUMP_UP_FINAL_FOOT_CORRECTION_Y =
+    -0.583;
 
 type ClimbExitLiftMode =
     | "idle"
@@ -172,31 +207,54 @@ function getClimbExitFootLift(
 // Animation ที่ต้องลบ Root Motion
 // ========================================
 const IN_PLACE_CLIPS = new Set([
+    "Idle",
     "Jog",
     "Spint",
     "RunningJump",
     "Jump",
-    "Falling",
     "Landing",
+    "HardLanding",
     "RunningSlide",
-    "Crouch",
+    "SpintingRoll",
+    "Pushing",
+    "JumpHang",
+    "BracedHangDrop",
+    "RunJumpUp",
+    "CrouchingIdle",
     "CrouchWalking",
+    "CrouchedSpinting",
+    "CrouchedStanding",
+    "RunStop",
     "HangingIdle",
+    "JumpUp",
+    "Vault",
+    "WallClimp",
     "BracedHangCrouch",
 ]);
 
 /*
- * BracedHangCrouch ถูก export ไปผูกกับ Armature สำรอง (_2)
- * ที่ไม่มี SkinnedMesh แสดงผล จึง rebind เฉพาะ track กระดูก
- * กลับมายังชื่อ rig หลัก โดยไม่แก้ไฟล์ GLB ต้นฉบับ
+ * บางคลิปถูก export ไปผูกกับ Armature สำรองที่ไม่มี
+ * SkinnedMesh แสดงผล จึง rebind track กลับมายัง rig หลัก
+ * โดยไม่แก้ไฟล์ GLB ต้นฉบับหรือชื่อคลิป
  */
-function rebindClimbTracksToVisibleRig(
+function rebindTracksToVisibleRig(
     clip: THREE.AnimationClip,
 ) {
+    let sourceSuffix: string | null = null;
+
     if (
-        clip.name !==
-        CLIP_NAMES.Climb
+        clip.name ===
+        CLIP_NAMES.BracedHangCrouch
     ) {
+        sourceSuffix = "_2";
+    } else if (
+        clip.name ===
+        CLIP_NAMES.RunJumpUp
+    ) {
+        sourceSuffix = "_13";
+    }
+
+    if (sourceSuffix === null) {
         return;
     }
 
@@ -216,13 +274,18 @@ function rebindClimbTracksToVisibleRig(
                 );
 
             if (
-                !sourceNodeName.endsWith("_2")
+                !sourceNodeName.endsWith(
+                    sourceSuffix,
+                )
             ) {
                 return [];
             }
 
             const targetNodeName =
-                sourceNodeName.slice(0, -2);
+                sourceNodeName.slice(
+                    0,
+                    -sourceSuffix.length,
+                );
 
             const reboundTrack =
                 track.clone();
@@ -243,7 +306,7 @@ function removeRootMotion(
 ) {
     const clip = sourceClip.clone();
 
-    rebindClimbTracksToVisibleRig(
+    rebindTracksToVisibleRig(
         clip,
     );
 
@@ -252,13 +315,13 @@ function removeRootMotion(
     }
 
     for (const track of clip.tracks) {
+        const name = track.name.toLowerCase();
+
         if (
             !(track instanceof THREE.VectorKeyframeTrack)
         ) {
             continue;
         }
-
-        const name = track.name.toLowerCase();
 
         if (!name.endsWith(".position")) {
             continue;
@@ -282,12 +345,47 @@ function removeRootMotion(
             name.includes("armature");
 
         const isLandingHips =
-            clip.name === "Landing" &&
+            (
+                clip.name ===
+                    CLIP_NAMES.Landing ||
+                clip.name ===
+                    CLIP_NAMES.HardLanding
+            ) &&
             isHips;
 
         const isSlideHips =
             clip.name ===
                 CLIP_NAMES.RunningSlide &&
+            isHips;
+
+        const isHangTransitionHips =
+            (
+                clip.name ===
+                    CLIP_NAMES.JumpHang ||
+                clip.name ===
+                    CLIP_NAMES.BracedHangDrop
+            ) &&
+            isHips;
+
+        const isRunJumpUpHips =
+            clip.name ===
+                CLIP_NAMES.RunJumpUp &&
+            isHips;
+
+        const isPushingHips =
+            clip.name ===
+                CLIP_NAMES.Pushing &&
+            isHips;
+
+        const isGroundTransitionHips =
+            (
+                clip.name ===
+                    CLIP_NAMES.CrouchedSpinting ||
+                clip.name ===
+                    CLIP_NAMES.CrouchedStanding ||
+                clip.name ===
+                    CLIP_NAMES.RunStop
+            ) &&
             isHips;
 
         const isClimbHips =
@@ -297,7 +395,7 @@ function removeRootMotion(
 
         const isHangHips =
             clip.name ===
-                CLIP_NAMES.Hang &&
+                CLIP_NAMES.HangingIdle &&
             isHips;
 
         // ===================================
@@ -318,7 +416,11 @@ function removeRootMotion(
                 if (
                     isClimbHips ||
                     isHangHips ||
-                    isSlideHips
+                    isSlideHips ||
+                    isHangTransitionHips ||
+                    isRunJumpUpHips ||
+                    isPushingHips ||
+                    isGroundTransitionHips
                 ) {
                     values[i + 1] = startY;
                 }
@@ -360,14 +462,18 @@ function removeRootMotion(
                         startZ -
                         visualOffsetY /
                         RIG_POSITION_TO_WORLD_SCALE;
-                } else if (isHangHips) {
+                } else if (
+                    isHangHips ||
+                    isHangTransitionHips
+                ) {
                     values[i + 2] =
                         startZ -
                         HANG_VISUAL_OFFSET_Y /
                         RIG_POSITION_TO_WORLD_SCALE;
                 } else if (
                     !isLandingHips &&
-                    !isSlideHips
+                    !isSlideHips &&
+                    !isGroundTransitionHips
                 ) {
                     values[i + 2] = startZ;
                 }
@@ -425,8 +531,28 @@ export default function PlayerModel({
             null,
         );
 
+    const jumpUpActionRef =
+        useRef<THREE.AnimationAction | null>(
+            null,
+        );
+
     const latestSafeDelta =
         useRef(0);
+
+    const jumpUpVisualElapsed =
+        useRef(0);
+
+    const jumpUpVisualOffsetY =
+        useRef(0);
+
+    const jumpUpExitBlendTime =
+        useRef<number | null>(null);
+
+    const jumpUpExitStartOffsetY =
+        useRef(0);
+
+    const previousFrameAnimation =
+        useRef<PlayerAnimation>(animation);
 
     const climbExitLiftAdjustment =
         useRef(0);
@@ -464,12 +590,15 @@ export default function PlayerModel({
         climbActionRef.current =
             actions[CLIP_NAMES.Climb] ??
             null;
+        jumpUpActionRef.current =
+            actions[CLIP_NAMES.JumpUp] ??
+            null;
     }, [actions]);
 
     /*
      * Drei เดิน AnimationMixer ด้วย delta จริง
      * แต่ physics ของ Player จำกัด delta ไว้ที่ 0.1
-     * จึงกำหนดเวลา Climb จาก clock เดียวกับ physics
+     * จึงกำหนดเวลา Climb/JumpUp จาก clock เดียวกับ physics
      */
     useFrame((_, delta) => {
         const safeDelta =
@@ -480,6 +609,97 @@ export default function PlayerModel({
 
         latestSafeDelta.current =
             safeDelta;
+
+        const wasJumpUp =
+            previousFrameAnimation.current ===
+            "JumpUp";
+
+        if (animation === "JumpUp") {
+            if (!wasJumpUp) {
+                jumpUpVisualElapsed.current = 0;
+                jumpUpVisualOffsetY.current = 0;
+            }
+
+            jumpUpExitBlendTime.current = null;
+            jumpUpVisualElapsed.current =
+                Math.min(
+                    jumpUpVisualElapsed.current +
+                        safeDelta,
+                    JUMP_UP_ANIMATION_DURATION,
+                );
+
+            const jumpUpProgress =
+                JUMP_UP_ANIMATION_DURATION > 0
+                    ? jumpUpVisualElapsed.current /
+                        JUMP_UP_ANIMATION_DURATION
+                    : 1;
+
+            const settleProgress =
+                THREE.MathUtils.smoothstep(
+                    jumpUpProgress,
+                    JUMP_UP_VISUAL_SETTLE_START,
+                    1,
+                );
+
+            jumpUpVisualOffsetY.current =
+                THREE.MathUtils.lerp(
+                    0,
+                    JUMP_UP_FINAL_FOOT_CORRECTION_Y,
+                    settleProgress,
+                );
+
+            const jumpUpAction =
+                jumpUpActionRef.current;
+
+            if (jumpUpAction) {
+                jumpUpAction.time =
+                    jumpUpAction.getClip().duration *
+                    jumpUpProgress;
+                jumpUpAction.setEffectiveTimeScale(
+                    0,
+                );
+            }
+        } else {
+            jumpUpActionRef.current
+                ?.setEffectiveTimeScale(1);
+
+            if (wasJumpUp) {
+                jumpUpExitBlendTime.current = 0;
+                jumpUpExitStartOffsetY.current =
+                    jumpUpVisualOffsetY.current;
+            }
+
+            const jumpUpExitTime =
+                jumpUpExitBlendTime.current;
+
+            if (jumpUpExitTime !== null) {
+                const nextJumpUpExitTime =
+                    Math.min(
+                        jumpUpExitTime + delta,
+                        ANIMATION_FADE_DURATION,
+                    );
+
+                jumpUpVisualOffsetY.current =
+                    jumpUpExitStartOffsetY.current *
+                    Math.pow(
+                        1 -
+                            nextJumpUpExitTime /
+                                ANIMATION_FADE_DURATION,
+                        1.25,
+                    );
+
+                jumpUpExitBlendTime.current =
+                    nextJumpUpExitTime >=
+                    ANIMATION_FADE_DURATION
+                        ? null
+                        : nextJumpUpExitTime;
+            } else {
+                jumpUpVisualOffsetY.current = 0;
+            }
+        }
+
+        previousFrameAnimation.current =
+            animation;
 
         const climbAction =
             climbActionRef.current;
@@ -529,7 +749,8 @@ export default function PlayerModel({
 
         if (exitTime === null) {
             model.position.y =
-                MODEL_OFFSET_Y;
+                MODEL_OFFSET_Y +
+                jumpUpVisualOffsetY.current;
             return;
         }
 
@@ -574,6 +795,7 @@ export default function PlayerModel({
 
         model.position.y =
             MODEL_OFFSET_Y +
+            jumpUpVisualOffsetY.current +
             baseFootLift +
             liftAdjustment;
 
@@ -584,7 +806,8 @@ export default function PlayerModel({
             climbExitBlendTime.current =
                 null;
             model.position.y =
-                MODEL_OFFSET_Y;
+                MODEL_OFFSET_Y +
+                jumpUpVisualOffsetY.current;
         } else {
             climbExitBlendTime.current =
                 nextExitTime;
@@ -641,7 +864,6 @@ export default function PlayerModel({
             return;
         }
 
-        // ถ้าเป็นตัวเดิม ไม่ต้อง restart
         if (
             previousAction.current ===
             nextAction
@@ -675,7 +897,7 @@ export default function PlayerModel({
             climbExitBlendTime.current = 0;
             climbExitLiftMode.current =
                 animation === "Jog" ||
-                animation === "Run"
+                animation === "Spint"
                     ? "locomotion"
                     : "idle";
             climbExitLiftAdjustment.current =
@@ -688,7 +910,7 @@ export default function PlayerModel({
         ) {
             const usesLocomotionLift =
                 animation === "Jog" ||
-                animation === "Run";
+                animation === "Spint";
 
             if (
                 (
@@ -755,8 +977,20 @@ export default function PlayerModel({
             animation === "Jump" ||
             animation === "RunningJump" ||
             animation === "Landing" ||
+            animation === "HardLanding" ||
             animation === "RunningSlide" ||
-            animation === "Climb";
+            animation === "SpintingRoll" ||
+            animation === "JumpHang" ||
+            animation === "BracedHangDrop" ||
+            animation === "JumpUp" ||
+            animation === "Climb" ||
+            animation === "RunJumpUp" ||
+            animation === "CrouchedSpinting" ||
+            animation === "CrouchedStanding" ||
+            animation === "RunStop" ||
+            animation === "Vault" ||
+            animation === "WallClimp" ||
+            animation === "BracedHangCrouch";
         if (isOneShot) {
             nextAction.setLoop(
                 THREE.LoopOnce,
@@ -791,10 +1025,29 @@ export default function PlayerModel({
                 LANDING_CLIP_START_TIME;
         }
 
+        let playbackDuration: number | null =
+            null;
+
+        if (animation === "RunningSlide") {
+            playbackDuration =
+                SLIDE_ANIMATION_DURATION;
+        } else if (animation === "JumpHang") {
+            playbackDuration =
+                JUMP_HANG_ANIMATION_DURATION;
+        } else if (
+            animation === "BracedHangDrop"
+        ) {
+            playbackDuration =
+                HANG_DROP_ANIMATION_DURATION;
+        } else if (animation === "JumpUp") {
+            playbackDuration =
+                JUMP_UP_ANIMATION_DURATION;
+        }
+
         const playbackTimeScale =
-            animation === "RunningSlide"
+            playbackDuration !== null
                 ? nextAction.getClip().duration /
-                    SLIDE_ANIMATION_DURATION
+                    playbackDuration
                 : 1;
 
         nextAction

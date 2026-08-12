@@ -21,6 +21,9 @@ import {
 } from "@react-three/rapier";
 import * as THREE from "three";
 
+import RunDustEffect from "./effects/RunDustEffect";
+import SpeedLinesEffect from "./effects/SpeedLinesEffect";
+import type { PlayerEffectSnapshot } from "./effects/playerEffectTypes";
 import PlayerModel, {
     PLAYER_MODEL_SCALE,
     type PlayerAnimation,
@@ -30,18 +33,19 @@ import PlayerModel, {
 // Movement
 // ==============================
 
-const JOG_SPEED = 5.5;
-const RUN_SPEED = 12.5;
+const JOG_SPEED = 8.5;
+const RUN_SPEED = 14.5;
 const CROUCH_SPEED = 2.5;
 
-const JUMP_SPEED = 7.5;
+const JUMP_SPEED = 8.5;
 const TAKEOFF_GROUND_IGNORE_VELOCITY = 1;
 // เริ่ม Landing ก่อนเท้าแตะพื้นกี่หน่วย
 const LAND_PREP_DISTANCE = 0;
 // ระยะจากจุดกึ่งกลาง RigidBody ถึงเท้า
 const PLAYER_FOOT_OFFSET = 0.9;
-// เล่น Landing นานประมาณกี่วินาที
-const LAND_DURATION = 0.25;
+// Landing เริ่มเล่นที่วินาที 0.5 ใน PlayerModel
+const LAND_DURATION = 1.0833333 - 0.5;
+const HARD_LANDING_DURATION = 2.0166667;
 
 /*
  * Falling ใช้เฉพาะการเดินตกจากที่สูง
@@ -50,11 +54,53 @@ const LAND_DURATION = 0.25;
 const HIGH_FALL_MIN_CLEARANCE = 2.25;
 const HIGH_FALL_START_VELOCITY = -1.5;
 
-// Sprint -> Slide (ไม่เพิ่มความเร็วเกิน Momentum เดิม)
+// Sprint -> Slide
 const SLIDE_MIN_ENTRY_SPEED = 7;
-const SLIDE_DRAG = 2.2;
-const SLIDE_DURATION = 0.75;
+// ให้การกด Slide ทันทีหลังเริ่ม Sprint ยังมีแรงส่งชัดเจน
+// แต่ถ้าวิ่งมาเร็วกว่านี้จะเก็บ Momentum ที่สูงกว่าไว้ทั้งหมด
+const SLIDE_MIN_INITIAL_SPEED = 20.5;
+// ค่าสัมประสิทธิ์แรงเสียดทานแบบ exponential (ยิ่งต่ำยิ่งไกล)
+const SLIDE_DRAG = 0.1;
+const SLIDE_DURATION = 0.95;
 const SLIDE_BLOCKED_SPEED = 0.2;
+
+const JUMP_HANG_DURATION = 0.45;
+const HANG_DROP_DURATION = 0.65;
+const RUN_JUMP_UP_DURATION = 0.8;
+
+// Grounded one-shot animation durations จาก student.glb
+const CROUCHED_STANDING_DURATION = 0.65;
+const CROUCHED_SPINTING_DURATION = 0.5166667;
+const RUN_STOP_DURATION = 0.9166667;
+
+/*
+ * เว้นช่วงสั้น ๆ ก่อน RunStop เพื่อไม่ให้ปุ่มที่ปล่อยเพียงชั่วครู่
+ * ถูกตีความเป็นการหยุดจริง
+ */
+const RUN_STOP_INPUT_GRACE = 0.12;
+
+/*
+ * คง inertia ตอนกลับทิศไว้โดยเบรก velocity เดิมถึงศูนย์ก่อน
+ * แล้วจึงให้ acceleration ปกติเร่งไปทิศใหม่
+ */
+const REVERSE_BRAKE_ACCELERATION = 45;
+
+function moveTowards(
+    current: number,
+    target: number,
+    maxDelta: number,
+) {
+    const delta = target - current;
+
+    if (Math.abs(delta) <= maxDelta) {
+        return target;
+    }
+
+    return (
+        current +
+        Math.sign(delta) * maxDelta
+    );
+}
 
 // ==============================
 // Camera
@@ -64,7 +110,7 @@ const SLIDE_BLOCKED_SPEED = 0.2;
 const CAMERA_DISTANCE = 13;
 
 // ความสูงกล้องเหนือ Player
-const CAMERA_HEIGHT = 5.5;
+const CAMERA_HEIGHT = 3.5;
 
 // กล้องมองสูงกว่าจุดกลาง Player เล็กน้อย
 const CAMERA_TARGET_HEIGHT = 3;
@@ -117,11 +163,8 @@ const LEDGE_REGRAB_COOLDOWN = 0.3;
 // ==============================
 
 // ให้การขยับ Body จบพร้อมคลิป Climb
-const CLIMB_DURATION = 3.85;
-
-// จากขอบขึ้นไป Body ต้องอยู่สูงเท่าไร
-// Ground Sensor ของ Player อยู่ประมาณ -0.94
-const CLIMB_BODY_ABOVE_LEDGE = 0.905;
+// ตรงกับความยาวจริงของ BracedHangCrouch เพื่อไม่ยืดท่าปีนจนช้า
+const CLIMB_DURATION = 1.15;
 
 // ปีนเข้าไปด้านบน Platform เท่าไร
 const CLIMB_FORWARD_DISTANCE = 0.65;
@@ -163,6 +206,15 @@ const STANDING_COLLIDER_OFFSET_Y =
     STANDING_HALF_HEIGHT +
     PLAYER_RADIUS -
     PLAYER_FOOT_OFFSET;
+
+/*
+ * ระยะจากจุดกลาง RigidBody ถึงก้น Standing Capsule/เท้า
+ * ใช้กำหนดตำแหน่งจบ climb จาก geometry จริงแทนเลขชดเชย hardcode
+ */
+const STANDING_BODY_TO_FOOT =
+    STANDING_HALF_HEIGHT +
+    PLAYER_RADIUS -
+    STANDING_COLLIDER_OFFSET_Y;
 
 // ==============================
 // Crouching Collider
@@ -207,6 +259,15 @@ const STANDING_COLLIDER_TOP_Y =
     STANDING_HALF_HEIGHT +
     PLAYER_RADIUS;
 
+/*
+ * ถ้าขอบไม่สูงเกิน Standing Collider มากกว่า 0.25 หน่วย
+ * ใช้ RunJumpUp ข้ามขึ้นไปโดยไม่เข้าสถานะ Hang
+ */
+const RUN_JUMP_UP_MAX_LEDGE_HEIGHT =
+    STANDING_COLLIDER_TOP_Y +
+    PLAYER_FOOT_OFFSET +
+    0.25;
+
 const CROUCH_COLLIDER_TOP_Y =
     CROUCH_COLLIDER_OFFSET_Y +
     CROUCHING_HALF_HEIGHT +
@@ -233,7 +294,7 @@ const CEILING_SENSOR_OFFSET_Y =
         CEILING_SENSOR_BOTTOM_Y) /
     2;
 
-const CEILING_SENSOR_HALF_WIDTH = 0.2;
+const CEILING_SENSOR_HALF_WIDTH = PLAYER_RADIUS;
 
 const INACTIVE_COLLISION_GROUPS = 0;
 
@@ -248,7 +309,29 @@ type KeyboardState = {
     crouch: boolean;
 };
 
-export default function Player() {
+type GroundTransition =
+    | "CrouchedSpinting"
+    | "CrouchedStanding"
+    | "RunStop";
+
+const GROUND_TRANSITION_DURATIONS: Record<
+    GroundTransition,
+    number
+> = {
+    CrouchedSpinting:
+        CROUCHED_SPINTING_DURATION,
+    CrouchedStanding:
+        CROUCHED_STANDING_DURATION,
+    RunStop: RUN_STOP_DURATION,
+};
+
+type PlayerProps = {
+    isPushing?: boolean;
+};
+
+export default function Player({
+    isPushing = false,
+}: PlayerProps) {
     const { camera } = useThree();
 
     const { world, rapier } = useRapier();
@@ -278,6 +361,17 @@ export default function Player() {
     const visualRef =
         useRef<THREE.Group>(null);
 
+    const playerEffectState =
+        useRef<PlayerEffectSnapshot>({
+            x: -10,
+            footY: 2.1,
+            z: 0,
+            velocityX: 0,
+            grounded: false,
+            enabled: false,
+            locomotionActive: false,
+        });
+
     // ==============================
     // Player State
     // ==============================
@@ -303,6 +397,14 @@ export default function Player() {
     const isCrouching = useRef(false);
 
     const crouchPressed = useRef(false);
+    const crouchKeysDown =
+        useRef(new Set<string>());
+    const manualCrouchActive =
+        useRef(false);
+    const standFromManualCrouchQueued =
+        useRef(false);
+    const crouchSprintOverride =
+        useRef(false);
     const isSliding = useRef(false);
     const slideTimer = useRef(0);
     const slideDirection =
@@ -329,6 +431,8 @@ export default function Player() {
      */
     const highFallActive = useRef(false);
 
+    const lastGroundFootY = useRef(0);
+
     /*
      * จำว่าตอนกระโดดเริ่มจากการวิ่งหรือไม่
      *
@@ -341,6 +445,10 @@ export default function Player() {
      * Landing state
      */
     const landingTimer = useRef(0);
+    const landingAnimation =
+        useRef<"Landing" | "HardLanding">(
+            "Landing",
+        );
 
     // ==============================
     // Ledge State
@@ -367,6 +475,12 @@ export default function Player() {
     // กดลงเพื่อปล่อยขอบ
     const dropFromLedgeQueued =
         useRef(false);
+
+    const isEnteringHang = useRef(false);
+    const hangEntryTimer = useRef(0);
+
+    const isHangDropping = useRef(false);
+    const hangDropTimer = useRef(0);
 
     // ป้องกันปล่อยแล้วคว้าซ้ำทันที
     const ledgeGrabCooldown =
@@ -417,6 +531,18 @@ export default function Player() {
             z: 0,
         });
 
+    const isRunJumpingUp = useRef(false);
+    const runJumpUpTimer = useRef(0);
+
+    const runJumpUpStartPosition =
+        useRef({ x: 0, y: 0, z: 0 });
+
+    const runJumpUpTopPosition =
+        useRef({ x: 0, y: 0, z: 0 });
+
+    const runJumpUpEndPosition =
+        useRef({ x: 0, y: 0, z: 0 });
+
     const setCrouchingColliderRef =
         useCallback((collider: RapierCollider | null) => {
             crouchingColliderRef.current = collider;
@@ -453,6 +579,20 @@ export default function Player() {
     const currentAnimation =
         useRef<PlayerAnimation>("Idle");
 
+    const groundTransition =
+        useRef<GroundTransition | null>(
+            null,
+        );
+
+    const groundTransitionTimer =
+        useRef(0);
+
+    const groundTransitionStartedThisFrame =
+        useRef(false);
+
+    const runStopInputTimer =
+        useRef(0);
+
     function changeAnimation(
         nextAnimation: PlayerAnimation,
     ) {
@@ -467,6 +607,30 @@ export default function Player() {
             nextAnimation;
 
         setAnimation(nextAnimation);
+    }
+
+    function startGroundTransition(
+        nextTransition: GroundTransition,
+    ) {
+        if (
+            groundTransition.current ===
+            nextTransition
+        ) {
+            return;
+        }
+
+        groundTransition.current =
+            nextTransition;
+        groundTransitionTimer.current = 0;
+        groundTransitionStartedThisFrame.current =
+            true;
+    }
+
+    function clearGroundTransition() {
+        groundTransition.current = null;
+        groundTransitionTimer.current = 0;
+        groundTransitionStartedThisFrame.current =
+            false;
     }
 
     // ==============================
@@ -498,14 +662,24 @@ export default function Player() {
                 case "ControlRight":
                     event.preventDefault();
 
-                    if (
-                        !event.repeat &&
-                        !keys.current.crouch
-                    ) {
-                        crouchPressed.current = true;
+                    if (event.repeat) {
+                        break;
                     }
 
+                    const wasCrouchHeld =
+                        crouchKeysDown.current
+                            .size > 0;
+
+                    crouchKeysDown.current.add(
+                        event.code,
+                    );
                     keys.current.crouch = true;
+                    standFromManualCrouchQueued.current =
+                        false;
+
+                    if (!wasCrouchHeld) {
+                        crouchPressed.current = true;
+                    }
                     break;
 
                 case "Space":
@@ -522,7 +696,10 @@ export default function Player() {
                     }
 
                     // ปกติ → Space = Jump
-                    if (!isClimbing.current) {
+                    if (
+                        !isClimbing.current &&
+                        !isRunJumpingUp.current
+                    ) {
                         jumpQueued.current = true;
                     }
 
@@ -568,7 +745,23 @@ export default function Player() {
                 case "KeyC":
                 case "ControlLeft":
                 case "ControlRight":
-                    keys.current.crouch = false;
+                    event.preventDefault();
+                    const releasedCrouchKey =
+                        crouchKeysDown.current.delete(
+                            event.code,
+                        );
+                    keys.current.crouch =
+                        crouchKeysDown.current
+                            .size > 0;
+
+                    if (
+                        releasedCrouchKey &&
+                        !keys.current.crouch &&
+                        manualCrouchActive.current
+                    ) {
+                        standFromManualCrouchQueued.current =
+                            true;
+                    }
                     break;
             }
         }
@@ -578,11 +771,17 @@ export default function Player() {
             keys.current.right = false;
             keys.current.run = false;
             keys.current.crouch = false;
+            crouchKeysDown.current.clear();
+            manualCrouchActive.current = false;
+            standFromManualCrouchQueued.current =
+                false;
+            crouchSprintOverride.current = false;
 
             jumpQueued.current = false;
             crouchPressed.current = false;
             isSliding.current = false;
             slideTimer.current = 0;
+            runStopInputTimer.current = 0;
         }
 
         window.addEventListener(
@@ -818,36 +1017,15 @@ export default function Player() {
             0.1,
         );
 
-        // ============================
-        // Crouch
-        // ============================
+        const currentVelocity =
+            body.linvel();
 
-        /*
-         * กด C → ย่อ
-         */
-        if (
-            keys.current.crouch &&
-            !isCrouching.current
-        ) {
-            setCrouching(true);
-        }
+        const isTouchingDownThisFrame =
+            !wasGrounded.current &&
+            stableGrounded.current;
 
-        /*
-         * ปล่อย C → พยายามลุก
-         */
-        if (
-            !keys.current.crouch &&
-            isCrouching.current &&
-            !isSliding.current
-        ) {
-            /*
-             * ถ้าไม่มีอะไรอยู่เหนือหัว
-             * ถึงจะยืนได้
-             */
-            if (ceilingContacts.current === 0) {
-                setCrouching(false);
-            }
-        }
+        groundTransitionStartedThisFrame.current =
+            false;
 
         // ============================
         // Direction
@@ -863,26 +1041,246 @@ export default function Player() {
             direction += 1;
         }
 
+        const isMoving = direction !== 0;
+        const requestedFacingDirection:
+            1 | -1 | null =
+            direction > 0
+                ? 1
+                : direction < 0
+                    ? -1
+                    : null;
+
+        // ============================
+        // Crouch
+        // ============================
+
+        const wantsCrouchedSprint =
+            keys.current.crouch &&
+            keys.current.run &&
+            isMoving;
+
+        if (!wantsCrouchedSprint) {
+            crouchSprintOverride.current = false;
+        }
+
+        /*
+         * Crouch + Sprint เป็น transition ลุกขึ้นวิ่งหนึ่งครั้ง
+         * สลับกลับ Standing collider ก่อนเริ่มคลิปเพื่อให้ปลายท่า
+         * ตรงกับ Spint และไม่ฝังโมเดลไว้กับ collider ย่อ
+         */
+        if (
+            wantsCrouchedSprint &&
+            !crouchSprintOverride.current &&
+            isCrouching.current &&
+            stableGrounded.current &&
+            !isTouchingDownThisFrame &&
+            !jumpQueued.current &&
+            !crouchPressed.current &&
+            !isSliding.current &&
+            !isHanging.current &&
+            !isHangDropping.current &&
+            !isClimbing.current &&
+            !isRunJumpingUp.current &&
+            !isPushing &&
+            landingTimer.current <= 0 &&
+            groundTransition.current === null &&
+            ceilingContacts.current === 0 &&
+            requestedFacingDirection !== null
+        ) {
+            manualCrouchActive.current = false;
+            standFromManualCrouchQueued.current =
+                false;
+            setCrouching(false);
+
+            if (!isCrouching.current) {
+                crouchSprintOverride.current = true;
+                facingDirection.current =
+                    requestedFacingDirection;
+
+                if (visualRef.current) {
+                    visualRef.current.rotation.y =
+                        requestedFacingDirection > 0
+                            ? Math.PI / 2
+                            : -Math.PI / 2;
+                }
+
+                startGroundTransition(
+                    "CrouchedSpinting",
+                );
+            }
+        }
+
+        /*
+         * C / Ctrl แบบกดค้าง:
+         * กดอยู่ → ย่อ, ปล่อย → พยายามลุก
+         */
+        if (
+            keys.current.crouch &&
+            !wantsCrouchedSprint &&
+            !crouchSprintOverride.current &&
+            !isCrouching.current &&
+            stableGrounded.current &&
+            !isTouchingDownThisFrame &&
+            landingTimer.current <= 0 &&
+            groundTransition.current === null
+        ) {
+            setCrouching(true);
+
+            if (isCrouching.current) {
+                manualCrouchActive.current = true;
+            }
+        }
+
+        /*
+         * ถ้ากด crouch ระหว่าง grounded one-shot ให้คิว input ไว้
+         * แล้วค่อยสลับ collider หลังคลิปจบ เพื่อไม่ให้ pose ยืน
+         * เล่นอยู่บน collider ย่อ
+         */
+
+        if (
+            !keys.current.crouch &&
+            isCrouching.current &&
+            !isSliding.current &&
+            !isTouchingDownThisFrame &&
+            landingTimer.current <= 0
+        ) {
+            /*
+             * ถ้าไม่มีอะไรอยู่เหนือหัว
+             * ถึงจะยืนได้
+             */
+            if (
+                ceilingContacts.current === 0 &&
+                (
+                    groundTransition.current ===
+                        null ||
+                    groundTransition.current ===
+                        "CrouchedStanding"
+                )
+            ) {
+                const shouldPlayManualStand =
+                    standFromManualCrouchQueued.current &&
+                    manualCrouchActive.current &&
+                    stableGrounded.current &&
+                    !isTouchingDownThisFrame &&
+                    !jumpQueued.current &&
+                    !isSliding.current &&
+                    !isHanging.current &&
+                    !isHangDropping.current &&
+                    !isClimbing.current &&
+                    !isRunJumpingUp.current &&
+                    landingTimer.current <= 0 &&
+                    groundTransition.current === null;
+
+                setCrouching(false);
+
+                if (!isCrouching.current) {
+                    manualCrouchActive.current = false;
+                    standFromManualCrouchQueued.current =
+                        false;
+
+                    if (shouldPlayManualStand) {
+                        startGroundTransition(
+                            "CrouchedStanding",
+                        );
+                    }
+                }
+            }
+        }
+
+        if (isMoving) {
+            runStopInputTimer.current = 0;
+        } else if (
+            stableGrounded.current &&
+            groundTransition.current === null &&
+            currentAnimation.current ===
+                "Spint"
+        ) {
+            runStopInputTimer.current +=
+                safeDelta;
+        } else {
+            runStopInputTimer.current = 0;
+        }
+
+        /*
+         * Jump และ traversal มี priority สูงกว่า grounded one-shot
+         * จึงยกเลิก transition เดิมทันทีที่ขอกระโดด
+         */
+        if (
+            jumpQueued.current &&
+            groundTransition.current !== null
+        ) {
+            clearGroundTransition();
+        }
+
+        const activeGroundTransition =
+            groundTransition.current;
+
+        if (
+            activeGroundTransition !== null &&
+            !groundTransitionStartedThisFrame.current &&
+            currentAnimation.current ===
+                activeGroundTransition
+        ) {
+            groundTransitionTimer.current +=
+                safeDelta;
+
+            const transitionDuration =
+                GROUND_TRANSITION_DURATIONS[
+                    activeGroundTransition
+                ];
+
+            if (
+                groundTransitionTimer.current >=
+                transitionDuration
+            ) {
+                clearGroundTransition();
+
+                /*
+                 * ถ้ากด C คิวไว้ระหว่าง one-shot ให้เข้า crouch ทันที
+                 * ในเฟรมที่คลิปจบ ไม่ปล่อย Spint/Jog แทรกหนึ่งเฟรม
+                 */
+                if (
+                    keys.current.crouch &&
+                    !wantsCrouchedSprint &&
+                    !crouchSprintOverride.current &&
+                    !isCrouching.current &&
+                    stableGrounded.current &&
+                    !isTouchingDownThisFrame &&
+                    ceilingContacts.current === 0
+                ) {
+                    setCrouching(true);
+
+                    if (isCrouching.current) {
+                        manualCrouchActive.current =
+                            true;
+                    }
+                }
+            }
+        }
+
         if (
             direction > 0 &&
+            currentVelocity.x >= -0.05 &&
             !isHanging.current &&
             !isClimbing.current &&
-            !isSliding.current
+            !isRunJumpingUp.current &&
+            !isSliding.current &&
+            groundTransition.current === null
         ) {
             facingDirection.current = 1;
         }
 
         if (
             direction < 0 &&
+            currentVelocity.x <= 0.05 &&
             !isHanging.current &&
             !isClimbing.current &&
-            !isSliding.current
+            !isRunJumpingUp.current &&
+            !isSliding.current &&
+            groundTransition.current === null
         ) {
             facingDirection.current = -1;
         }
-
-        const isMoving =
-            direction !== 0;
 
         // ============================
         // Speed
@@ -890,21 +1288,23 @@ export default function Player() {
 
         let maxSpeed = JOG_SPEED;
 
-        /*
-         * ตอนย่อให้เดินช้า
-         * ต่อให้กด Shift ก็ไม่วิ่ง
-         */
+        // ตอนย่อใช้ความเร็ว crouch จนกว่าจะเริ่ม transition ลุกวิ่ง
         if (isCrouching.current) {
             maxSpeed = CROUCH_SPEED;
+        } else if (isPushing) {
+            maxSpeed = JOG_SPEED;
         } else if (keys.current.run) {
             maxSpeed = RUN_SPEED;
         }
 
-        const targetVelocityX =
-            direction * maxSpeed;
+        const isRunStopping =
+            groundTransition.current ===
+            "RunStop";
 
-        const currentVelocity =
-            body.linvel();
+        const targetVelocityX =
+            isRunStopping
+                ? 0
+                : direction * maxSpeed;
 
         /*
          * acceleration / deceleration
@@ -912,8 +1312,21 @@ export default function Player() {
         const movementSmoothing =
             1 - Math.exp(-14 * safeDelta);
 
+        const isReversingVelocity =
+            stableGrounded.current &&
+            !isCrouching.current &&
+            direction !== 0 &&
+            currentVelocity.x * direction < 0;
+
         let velocityX =
-            THREE.MathUtils.lerp(
+            isReversingVelocity
+                ? moveTowards(
+                    currentVelocity.x,
+                    0,
+                    REVERSE_BRAKE_ACCELERATION *
+                        safeDelta,
+                )
+                : THREE.MathUtils.lerp(
                 currentVelocity.x,
                 targetVelocityX,
                 movementSmoothing,
@@ -922,6 +1335,15 @@ export default function Player() {
         let velocityY =
             currentVelocity.y;
 
+        if (
+            stableGrounded.current &&
+            !didJump.current
+        ) {
+            lastGroundFootY.current =
+                body.translation().y -
+                PLAYER_FOOT_OFFSET;
+        }
+
         // ============================
         // Sprint -> Slide
         // ============================
@@ -929,12 +1351,21 @@ export default function Player() {
         const currentHorizontalSpeed =
             Math.abs(currentVelocity.x);
 
+        let startedSlideThisFrame = false;
+
         if (
             crouchPressed.current &&
+            keys.current.run &&
+            isMoving &&
+            currentAnimation.current === "Spint" &&
+            !isPushing &&
             !isSliding.current &&
             stableGrounded.current &&
+            groundTransition.current === null &&
+            !isTouchingDownThisFrame &&
             !isHanging.current &&
             !isClimbing.current &&
+            !isRunJumpingUp.current &&
             currentHorizontalSpeed >=
                 SLIDE_MIN_ENTRY_SPEED
         ) {
@@ -957,6 +1388,11 @@ export default function Player() {
 
             isSliding.current = true;
             slideTimer.current = 0;
+            startedSlideThisFrame = true;
+            clearGroundTransition();
+            manualCrouchActive.current = false;
+            standFromManualCrouchQueued.current =
+                false;
 
             if (!isCrouching.current) {
                 setCrouching(true);
@@ -964,15 +1400,25 @@ export default function Player() {
         }
 
         if (isSliding.current) {
-            slideTimer.current +=
-                safeDelta;
+            /*
+             * เริ่ม clock หลังเฟรมที่ resolver เปลี่ยนเป็น RunningSlide
+             * เพื่อให้ physics และ AnimationAction เริ่มพร้อมกัน
+             */
+            if (!startedSlideThisFrame) {
+                slideTimer.current += delta;
+            }
 
             const speedAlongSlide =
-                Math.max(
-                    0,
-                    currentVelocity.x *
-                        slideDirection.current,
-                );
+                startedSlideThisFrame
+                    ? Math.max(
+                        currentHorizontalSpeed,
+                        SLIDE_MIN_INITIAL_SPEED,
+                    )
+                    : Math.max(
+                        0,
+                        currentVelocity.x *
+                            slideDirection.current,
+                    );
 
             const nextSlideSpeed =
                 speedAlongSlide *
@@ -1000,6 +1446,15 @@ export default function Player() {
                     ceilingContacts.current === 0
                 ) {
                     setCrouching(false);
+                    manualCrouchActive.current = false;
+                    standFromManualCrouchQueued.current =
+                        false;
+                } else if (
+                    keys.current.crouch &&
+                    isCrouching.current
+                ) {
+                    manualCrouchActive.current = true;
+                    crouchSprintOverride.current = true;
                 }
             }
         }
@@ -1028,6 +1483,11 @@ export default function Player() {
             dropFromLedgeQueued.current
         ) {
             isHanging.current = false;
+            isEnteringHang.current = false;
+            hangEntryTimer.current = 0;
+
+            isHangDropping.current = true;
+            hangDropTimer.current = 0;
 
             dropFromLedgeQueued.current =
                 false;
@@ -1046,13 +1506,27 @@ export default function Player() {
             velocityY = -1;
         }
 
+        if (isHangDropping.current) {
+            hangDropTimer.current +=
+                safeDelta;
+
+            if (
+                hangDropTimer.current >=
+                HANG_DROP_DURATION
+            ) {
+                isHangDropping.current = false;
+                hangDropTimer.current = 0;
+            }
+        }
+
         // ============================
         // เริ่ม Climb
         // ============================
 
         if (
             isHanging.current &&
-            climbQueued.current
+            climbQueued.current &&
+            !isEnteringHang.current
         ) {
             climbQueued.current = false;
             dropFromLedgeQueued.current =
@@ -1061,8 +1535,12 @@ export default function Player() {
             isHanging.current = false;
             isClimbing.current = true;
 
+            isHangDropping.current = false;
+            hangDropTimer.current = 0;
+
             isSliding.current = false;
             slideTimer.current = 0;
+            clearGroundTransition();
 
             climbTimer.current = 0;
 
@@ -1091,7 +1569,7 @@ export default function Player() {
 
                 y:
                     top.y +
-                    CLIMB_BODY_ABOVE_LEDGE,
+                    STANDING_BODY_TO_FOOT,
 
                 z: 0,
             };
@@ -1110,7 +1588,7 @@ export default function Player() {
 
                 y:
                     top.y +
-                    CLIMB_BODY_ABOVE_LEDGE,
+                    STANDING_BODY_TO_FOOT,
 
                 z: 0,
             };
@@ -1271,6 +1749,17 @@ export default function Player() {
                 );
 
                 /*
+                 * จุดปลายวางก้น collider บนผิว Platform พอดี
+                 * ล็อก traversal นี้เป็น grounded จน physics step ถัดไป
+                 * ตรวจยืนยันด้วย contact/ray เพื่อไม่คั่น Jump/Landing ปลอม
+                 */
+                stableGrounded.current = true;
+                wasGrounded.current = true;
+                didJump.current = false;
+                jumpStartedRunning.current = false;
+                highFallActive.current = false;
+
+                /*
                  * กันตรวจเจอ Ledge
                  * เดิมทันที
                  */
@@ -1282,10 +1771,123 @@ export default function Player() {
         }
 
         // ============================
+        // Run Jump Up: ขอบเตี้ย
+        // ============================
+
+        if (isRunJumpingUp.current) {
+            runJumpUpTimer.current +=
+                safeDelta;
+
+            const progress = Math.min(
+                runJumpUpTimer.current /
+                    RUN_JUMP_UP_DURATION,
+                1,
+            );
+
+            let nextPosition: {
+                x: number;
+                y: number;
+                z: number;
+            };
+
+            if (progress < 0.6) {
+                const phase = progress / 0.6;
+                const smooth =
+                    phase *
+                    phase *
+                    (3 - 2 * phase);
+
+                nextPosition = {
+                    x:
+                        runJumpUpStartPosition
+                            .current.x,
+                    y: THREE.MathUtils.lerp(
+                        runJumpUpStartPosition
+                            .current.y,
+                        runJumpUpTopPosition
+                            .current.y,
+                        smooth,
+                    ),
+                    z: 0,
+                };
+            } else {
+                const phase =
+                    (progress - 0.6) /
+                    0.4;
+                const smooth =
+                    phase *
+                    phase *
+                    (3 - 2 * phase);
+
+                nextPosition = {
+                    x: THREE.MathUtils.lerp(
+                        runJumpUpTopPosition
+                            .current.x,
+                        runJumpUpEndPosition
+                            .current.x,
+                        smooth,
+                    ),
+                    y:
+                        runJumpUpEndPosition
+                            .current.y,
+                    z: 0,
+                };
+            }
+
+            body.setTranslation(
+                nextPosition,
+                true,
+            );
+            body.setLinvel(
+                { x: 0, y: 0, z: 0 },
+                true,
+            );
+
+            velocityX = 0;
+            velocityY = 0;
+            jumpQueued.current = false;
+
+            if (progress >= 1) {
+                isRunJumpingUp.current = false;
+                runJumpUpTimer.current = 0;
+
+                body.setTranslation(
+                    runJumpUpEndPosition.current,
+                    true,
+                );
+                body.setGravityScale(1, true);
+
+                stableGrounded.current = true;
+                wasGrounded.current = true;
+                didJump.current = false;
+                jumpStartedRunning.current =
+                    false;
+                highFallActive.current = false;
+                landingTimer.current = 0;
+                ledgeGrabCooldown.current =
+                    LEDGE_REGRAB_COOLDOWN;
+            }
+        }
+
+        // ============================
         // กำลัง Hang
         // ============================
 
         if (isHanging.current) {
+            if (isEnteringHang.current) {
+                hangEntryTimer.current +=
+                    safeDelta;
+
+                if (
+                    hangEntryTimer.current >=
+                    JUMP_HANG_DURATION
+                ) {
+                    isEnteringHang.current =
+                        false;
+                    hangEntryTimer.current = 0;
+                }
+            }
+
             /*
              * ล็อก Body ไว้ที่ขอบ
              */
@@ -1309,8 +1911,23 @@ export default function Player() {
 
         else if (
             !isClimbing.current &&
-            !grounded &&
-            velocityY <= 0 &&
+            !isRunJumpingUp.current &&
+            (
+                !grounded ||
+                (
+                    didJump.current &&
+                    velocityY >
+                        TAKEOFF_GROUND_IGNORE_VELOCITY
+                )
+            ) &&
+            (
+                velocityY <= 0 ||
+                (
+                    didJump.current &&
+                    velocityY >
+                        TAKEOFF_GROUND_IGNORE_VELOCITY
+                )
+            ) &&
             ledgeGrabCooldown.current <= 0
         ) {
             const playerPosition =
@@ -1471,57 +2088,117 @@ export default function Player() {
                         z: topPoint.z,
                     };
 
-                    // ====================
-                    // เจอ Ledge!
-                    // ====================
+                    const ledgeHeight =
+                        topPoint.y -
+                        lastGroundFootY.current;
 
-                    isHanging.current =
-                        true;
+                    const shouldRunJumpUp =
+                        didJump.current &&
+                        ledgeHeight <=
+                            RUN_JUMP_UP_MAX_LEDGE_HEIGHT;
 
-                    isSliding.current = false;
-                    slideTimer.current = 0;
+                    if (shouldRunJumpUp) {
+                        isSliding.current = false;
+                        slideTimer.current = 0;
+                        clearGroundTransition();
 
-                    /*
-                     * Player ต้องอยู่
-                     * ด้านหน้าของผนัง
-                     */
-                    hangPosition.current = {
-                        x:
-                            wallPoint.x -
-                            facing *
-                            HANG_DISTANCE_FROM_WALL,
+                        const targetBodyY =
+                            topPoint.y +
+                            STANDING_BODY_TO_FOOT;
 
-                        y:
-                            topPoint.y -
-                            HANG_BODY_BELOW_LEDGE,
+                        isRunJumpingUp.current =
+                            true;
+                        runJumpUpTimer.current = 0;
+                        body.setGravityScale(0, true);
 
-                        z: 0,
-                    };
+                        /*
+                         * ล็อก state ก่อน resolver ด้านล่างทันที
+                         * เพื่อไม่ให้มี Jog / Run คั่นหนึ่งเฟรม
+                         */
+                        stableGrounded.current = false;
 
-                    /*
-                     * หยุด Gravity
-                     */
-                    body.setGravityScale(
-                        0,
-                        true,
-                    );
+                        runJumpUpStartPosition.current = {
+                            x: playerPosition.x,
+                            y: playerPosition.y,
+                            z: 0,
+                        };
 
-                    body.setTranslation(
-                        hangPosition.current,
-                        true,
-                    );
+                        runJumpUpTopPosition.current = {
+                            x: playerPosition.x,
+                            y: targetBodyY,
+                            z: 0,
+                        };
 
-                    velocityX = 0;
-                    velocityY = 0;
+                        runJumpUpEndPosition.current = {
+                            x:
+                                wallPoint.x +
+                                facing *
+                                    (
+                                        PLAYER_RADIUS +
+                                        0.12
+                                    ),
+                            y: targetBodyY,
+                            z: 0,
+                        };
+                    } else if (velocityY <= 0) {
+                        isSliding.current = false;
+                        slideTimer.current = 0;
+                        clearGroundTransition();
 
-                    groundContacts.current =
-                        0;
+                        /*
+                         * ขอบสูง: จับขอบก่อน แล้วค่อยเปลี่ยน
+                         * JumpHang -> HangingIdle
+                         */
+                        isHanging.current = true;
+                        isEnteringHang.current = true;
+                        hangEntryTimer.current = 0;
+                        body.setGravityScale(0, true);
 
-                    landingTimer.current =
-                        0;
+                        isHangDropping.current = false;
+                        hangDropTimer.current = 0;
 
-                    jumpQueued.current =
-                        false;
+                        hangPosition.current = {
+                            x:
+                                wallPoint.x -
+                                facing *
+                                HANG_DISTANCE_FROM_WALL,
+                            y:
+                                topPoint.y -
+                                HANG_BODY_BELOW_LEDGE,
+                            z: 0,
+                        };
+
+                        body.setTranslation(
+                            hangPosition.current,
+                            true,
+                        );
+
+                        /*
+                         * เมื่อจับขอบสำเร็จ Jump รอบเดิมจบแล้ว
+                         * เพื่อให้ปล่อยจากขอบสูงเข้า Falling ได้
+                         */
+                        didJump.current = false;
+                        jumpStartedRunning.current =
+                            false;
+                        highFallActive.current = false;
+                    }
+
+                    if (
+                        shouldRunJumpUp ||
+                        isHanging.current
+                    ) {
+                        velocityX = 0;
+                        velocityY = 0;
+
+                        groundContacts.current =
+                            0;
+
+                        landingTimer.current =
+                            0;
+
+                        jumpQueued.current =
+                            false;
+                    }
                 }
             }
         }
@@ -1552,9 +2229,13 @@ export default function Player() {
         if (
             jumpQueued.current &&
             groundedBeforeJump &&
+            landingTimer.current <= 0 &&
             isCrouching.current &&
             ceilingContacts.current === 0
         ) {
+            manualCrouchActive.current = false;
+            standFromManualCrouchQueued.current =
+                false;
             setCrouching(false);
         }
 
@@ -1562,6 +2243,7 @@ export default function Player() {
         if (
             jumpQueued.current &&
             groundedBeforeJump &&
+            landingTimer.current <= 0 &&
             !isCrouching.current
         ) {
             /*
@@ -1569,8 +2251,16 @@ export default function Player() {
              * กำลังวิ่งหรือไม่
              */
             jumpStartedRunning.current =
-                keys.current.run &&
-                isMoving;
+                (
+                    currentAnimation.current ===
+                        "Jog" ||
+                    currentAnimation.current ===
+                        "Spint" ||
+                    (
+                        isMoving &&
+                        keys.current.run
+                    )
+                );
 
             /*
              * บอกระบบว่า Jump รอบนี้
@@ -1597,6 +2287,14 @@ export default function Player() {
             jumpedThisFrame
                 ? false
                 : stableGrounded.current;
+
+        const highFallBeforeGroundReset =
+            highFallActive.current;
+
+        if (animationGrounded) {
+            isHangDropping.current = false;
+            hangDropTimer.current = 0;
+        }
 
         if (
             animationGrounded ||
@@ -1699,8 +2397,15 @@ export default function Player() {
             animationGrounded;
 
         if (justLanded) {
+            landingAnimation.current =
+                highFallBeforeGroundReset
+                    ? "HardLanding"
+                    : "Landing";
+
             landingTimer.current =
-                LAND_DURATION;
+                highFallBeforeGroundReset
+                    ? HARD_LANDING_DURATION
+                    : LAND_DURATION;
 
             /*
              * Jump รอบนี้จบแล้ว
@@ -1714,7 +2419,12 @@ export default function Player() {
         /*
          * ลดเวลา Landing
          */
-        if (landingTimer.current > 0) {
+        if (
+            landingTimer.current > 0 &&
+            !justLanded &&
+            currentAnimation.current ===
+                landingAnimation.current
+        ) {
             landingTimer.current =
                 Math.max(
                     0,
@@ -1724,13 +2434,15 @@ export default function Player() {
         }
 
         /*
-         * ถ้ายังกดเดินอยู่ ให้ต่อเข้า Jog / Run ทันที
-         * ไม่บังคับหยุดรอ Landing จบ
+         * ลงจาก Jump ปกติขณะยังถือทิศ ให้ต่อ Jog/Spint ทันที
+         * ไม่ล็อกความเร็วหรือคั่นด้วย Landing จน movement สะดุด
+         * แต่ HardLanding จากการตกสูงยังคงเป็น one-shot เต็มคลิป
          */
         if (
             animationGrounded &&
             isMoving &&
-            !isCrouching.current
+            landingAnimation.current ===
+                "Landing"
         ) {
             landingTimer.current = 0;
         }
@@ -1752,7 +2464,60 @@ export default function Player() {
             !keys.current.run &&
             !isCrouching.current;
 
-        if (isClimbing.current) {
+        const isWaitingForRunStop =
+            groundTransition.current === null &&
+            animationGrounded &&
+            !isMoving &&
+            !isCrouching.current &&
+            runStopInputTimer.current > 0 &&
+            runStopInputTimer.current <
+                RUN_STOP_INPUT_GRACE &&
+            currentAnimation.current ===
+                "Spint";
+
+        /*
+         * Traversal, slide และ airborne มี priority สูงกว่า
+         * grounded one-shot และต้องไม่ปล่อย transition เก่ากลับมาเล่นซ้ำ
+         */
+        if (
+            groundTransition.current !== null &&
+            (
+                !animationGrounded ||
+                isRunJumpingUp.current ||
+                isClimbing.current ||
+                isHanging.current ||
+                isHangDropping.current ||
+                isSliding.current
+            )
+        ) {
+            clearGroundTransition();
+        }
+
+        /*
+         * เริ่ม RunStop เพียงครั้งเดียวเมื่อหยุดจาก Spint
+         * ส่วน Jog กลับ Idle ทันทีเพื่อไม่ให้การขยับสั้น ๆ สะดุด
+         * timer/latch จะกัน Idle หรือ locomotion ใหม่มาตัดกลางคลิป
+         */
+        if (
+            groundTransition.current === null &&
+            animationGrounded &&
+            !isMoving &&
+            !isCrouching.current &&
+            !isPushing &&
+            landingTimer.current <= 0 &&
+            runStopInputTimer.current >=
+                RUN_STOP_INPUT_GRACE &&
+            currentAnimation.current ===
+                "Spint"
+        ) {
+            startGroundTransition("RunStop");
+        }
+
+        if (isRunJumpingUp.current) {
+            nextAnimation = "JumpUp";
+        }
+
+        else if (isClimbing.current) {
             nextAnimation = "Climb";
         }
 
@@ -1761,15 +2526,18 @@ export default function Player() {
         // ====================================
 
         else if (isHanging.current) {
-            nextAnimation = "Hang";
+            nextAnimation =
+                isEnteringHang.current
+                    ? "JumpHang"
+                    : "HangingIdle";
         }
 
         // ============================
-        // 1. Slide
+        // ปล่อยตัวลงจากขอบ
         // ============================
 
-        else if (isSliding.current) {
-            nextAnimation = "RunningSlide";
+        else if (isHangDropping.current) {
+            nextAnimation = "BracedHangDrop";
         }
 
         // ============================
@@ -1783,16 +2551,26 @@ export default function Player() {
                 landingTimer.current > 0
             )
         ) {
-            nextAnimation = "Landing";
+            nextAnimation = shouldPreLand
+                ? "Landing"
+                : landingAnimation.current;
         }
 
         // ============================
-        // 2. Airborne
+        // 3. Turn / Stop / Slide
+        // ============================
+
+        else if (isSliding.current) {
+            nextAnimation = "RunningSlide";
+        }
+
+        // ============================
+        // 4. Airborne
         // ============================
 
         else if (!animationGrounded) {
             if (highFallActive.current) {
-                nextAnimation = "Falling";
+                nextAnimation = "Jump";
             }
 
             /*
@@ -1814,29 +2592,60 @@ export default function Player() {
         }
 
         // ============================
-        // 3. Crouch
+        // 3. Grounded one-shot
+        // ============================
+
+        else if (
+            groundTransition.current !== null
+        ) {
+            nextAnimation =
+                groundTransition.current;
+        }
+
+        // ============================
+        // ดัน Printer / Object
+        // ============================
+
+        else if (
+            isPushing &&
+            animationGrounded &&
+            !isCrouching.current
+        ) {
+            nextAnimation = "Pushing";
+        }
+
+        // ============================
+        // 4. Crouch
         // ============================
 
         else if (isCrouching.current) {
             if (isMoving) {
-                nextAnimation =
-                    "CrouchWalking";
+                nextAnimation = "CrouchWalking";
             } else {
                 nextAnimation =
-                    "Crouch";
+                    "CrouchingIdle";
             }
         }
 
         // ============================
-        // 4. Run
+        // 5. รอก่อนเริ่ม RunStop
         // ============================
 
-        else if (isRunning) {
-            nextAnimation = "Run";
+        else if (isWaitingForRunStop) {
+            nextAnimation =
+                currentAnimation.current;
         }
 
         // ============================
-        // 5. Jog
+        // 6. Run
+        // ============================
+
+        else if (isRunning) {
+            nextAnimation = "Spint";
+        }
+
+        // ============================
+        // 7. Jog
         // ============================
 
         else if (isJogging) {
@@ -1844,7 +2653,7 @@ export default function Player() {
         }
 
         // ============================
-        // 6. Idle
+        // 8. Idle
         // ============================
 
         else {
@@ -1856,7 +2665,10 @@ export default function Player() {
          * แต่ไม่ล็อกช่วง Pre-Landing ที่ยังอยู่กลางอากาศ
          */
         if (
-            nextAnimation === "Landing" &&
+            (
+                nextAnimation === "Landing" ||
+                nextAnimation === "HardLanding"
+            ) &&
             animationGrounded
         ) {
             velocityX = 0;
@@ -1902,16 +2714,24 @@ export default function Player() {
             isMoving &&
             !isHanging.current &&
             !isClimbing.current &&
-            !isSliding.current
+            !isRunJumpingUp.current &&
+            !isSliding.current &&
+            groundTransition.current === null
         ) {
-            if (direction > 0) {
+            if (
+                direction > 0 &&
+                currentVelocity.x >= -0.05
+            ) {
                 // เดินขวา
                 visualRef.current.rotation.y =
                     Math.PI / 2;
                 // 0;
             }
 
-            if (direction < 0) {
+            if (
+                direction < 0 &&
+                currentVelocity.x <= 0.05
+            ) {
                 // เดินซ้าย
                 visualRef.current.rotation.y =
                     -Math.PI / 2;
@@ -1926,6 +2746,34 @@ export default function Player() {
         const position =
             body.translation();
 
+        const effectState =
+            playerEffectState.current;
+
+        effectState.x = position.x;
+        effectState.footY =
+            position.y - PLAYER_FOOT_OFFSET;
+        effectState.z = position.z;
+        effectState.velocityX =
+            currentVelocity.x;
+        effectState.grounded =
+            animationGrounded;
+        effectState.enabled =
+            animationGrounded &&
+            !isCrouching.current &&
+            !isSliding.current &&
+            !isHanging.current &&
+            !isClimbing.current &&
+            !isRunJumpingUp.current &&
+            !isPushing;
+        effectState.locomotionActive =
+            currentAnimation.current ===
+                "Jog" ||
+            currentAnimation.current ===
+                "Spint" ||
+            currentAnimation.current ===
+                "CrouchedSpinting" ||
+            currentAnimation.current ===
+                "RunStop";
         // ============================
         // Cinematic Side Camera
         // ============================
@@ -2097,6 +2945,12 @@ export default function Player() {
 
             isHanging.current = false;
             isClimbing.current = false;
+            isEnteringHang.current = false;
+            hangEntryTimer.current = 0;
+            isHangDropping.current = false;
+            hangDropTimer.current = 0;
+            isRunJumpingUp.current = false;
+            runJumpUpTimer.current = 0;
 
             climbQueued.current = false;
             dropFromLedgeQueued.current = false;
@@ -2106,6 +2960,12 @@ export default function Player() {
             isSliding.current = false;
             slideTimer.current = 0;
             crouchPressed.current = false;
+            manualCrouchActive.current = false;
+            standFromManualCrouchQueued.current =
+                false;
+            clearGroundTransition();
+            groundTransitionStartedThisFrame.current =
+                false;
 
             // ถ้าก่อนตกกำลัง Hang / Climb
             // Gravity อาจถูกปิดอยู่
@@ -2141,7 +3001,8 @@ export default function Player() {
     });
 
     return (
-        <RigidBody
+        <>
+            <RigidBody
             ref={bodyRef}
             name="player"
             position={[-10, 3, 0]}
@@ -2269,6 +3130,15 @@ export default function Player() {
                     animation={animation}
                 />
             </group>
-        </RigidBody>
+            </RigidBody>
+
+            <RunDustEffect
+                stateRef={playerEffectState}
+            />
+
+            <SpeedLinesEffect
+                stateRef={playerEffectState}
+            />
+        </>
     );
 }

@@ -17,6 +17,7 @@ import {
 } from "@react-three/rapier";
 
 import {
+    useCallback,
     useEffect,
     useMemo,
     useRef,
@@ -25,30 +26,34 @@ import {
 
 type ModelPrinterProps = {
     position?: [number, number, number];
+    onPushingChange?: (
+        isPushing: boolean,
+    ) => void;
 };
 
 // ============================
 // Grab Settings
 // ============================
 
-// ระยะ Player ↔ Printer ตอนจับ
-// เว้นระยะมากกว่ารัศมี Player + ครึ่งกว้างเครื่องพิมพ์
-// เล็กน้อย เพื่อไม่ให้ collider ซ้อนกันตอนเข้า Z = 0
-const PLAYER_COLLIDER_RADIUS = 0.35;
-const GRAB_CLEARANCE = 0.1;
+// ระยะจากจุดกึ่งกลาง Player ถึงผิวหน้า Printer ตอนดัน
+// ตรงกับระยะยื่นมือของคลิป Pushing โดยให้มือแตะขอบเล็กน้อย
+// แต่กันศีรษะ/ลำตัวไม่ให้จมเข้าโมเดล
+const PUSH_HAND_CONTACT_DISTANCE = 1.4;
 const GRAB_DISTANCE_RANGE = 0.3;
 
 // Asset ถูกสร้างด้วยสเกลของฉาก Blender
 // จึงย่อให้มีขนาดเหมาะกับเส้นทางและ Player ในเกม
 const PRINTER_MODEL_SCALE = 0.8;
 
-// ความแรงในการดึง Printer
-// ให้ตาม Player
+// ความแรงในการรักษาระยะมือกับ Printer ระหว่างดัน
 const FOLLOW_STRENGTH = 12;
 
 // จำกัดไม่ให้ Printer พุ่งเร็วเกิน
 // ต้องมากกว่าความเร็ววิ่งของ Player เล็กน้อย
 const MAX_FOLLOW_SPEED = 12;
+
+// กัน jitter จากค่าความเร็วเล็กมากตอน Player หยุดนิ่ง
+const PUSH_VELOCITY_THRESHOLD = 0.05;
 
 // ============================
 // Printer Lane
@@ -124,6 +129,7 @@ function getPlacementProgress(
 
 export default function ModelPrinter({
     position = [14, 1.35, PRINTER_STORAGE_Z],
+    onPushingChange,
 }: ModelPrinterProps) {
     const printerModel =
         useGLTF("/objects/printer.glb");
@@ -197,8 +203,7 @@ export default function ModelPrinter({
 
     const minGrabDistance =
         printerGeometry.halfExtents[0] +
-        PLAYER_COLLIDER_RADIUS +
-        GRAB_CLEARANCE;
+        PUSH_HAND_CONTACT_DISTANCE;
 
     const maxGrabDistance =
         minGrabDistance +
@@ -231,7 +236,7 @@ export default function ModelPrinter({
         number,
     ] = [
             printerGeometry.halfExtents[0] +
-            0.5,
+            PUSH_HAND_CONTACT_DISTANCE,
             interactionSensorHalfHeight,
             0.5,
         ];
@@ -272,13 +277,6 @@ export default function ModelPrinter({
         useRef<RapierRigidBody | null>(
             null,
         );
-
-    // Player อยู่ด้านไหนของ Printer
-    //
-    // -1 = ซ้าย
-    //  1 = ขวา
-    const grabSideRef =
-        useRef<-1 | 1>(-1);
 
     // ระยะตอนเริ่มจับ
     const grabDistanceRef =
@@ -323,6 +321,29 @@ export default function ModelPrinter({
 
     const isPlacedRef = useRef(false);
 
+    const isPushingRef = useRef(false);
+
+    const setPushing = useCallback(
+        (nextPushing: boolean) => {
+            if (
+                isPushingRef.current ===
+                nextPushing
+            ) {
+                return;
+            }
+
+            isPushingRef.current = nextPushing;
+            onPushingChange?.(nextPushing);
+        },
+        [onPushingChange],
+    );
+
+    useEffect(() => {
+        return () => {
+            setPushing(false);
+        };
+    }, [setPushing]);
+
     // ============================
     // E = Grab / Release
     // ============================
@@ -361,6 +382,8 @@ export default function ModelPrinter({
             // ========================
 
             if (isGrabbedRef.current) {
+                setPushing(false);
+
                 isGrabbedRef.current =
                     false;
 
@@ -421,16 +444,6 @@ export default function ModelPrinter({
                 printer.translation();
 
             // ========================
-            // จำว่า Player อยู่ด้านไหน
-            // ========================
-
-            grabSideRef.current =
-                playerPosition.x <
-                    printerPosition.x
-                    ? -1
-                    : 1;
-
-            // ========================
             // จำระยะปัจจุบัน
             //
             // จะได้ไม่ snap ตอนกด E
@@ -465,7 +478,11 @@ export default function ModelPrinter({
                 handleKeyDown,
             );
         };
-    }, [maxGrabDistance, minGrabDistance]);
+    }, [
+        maxGrabDistance,
+        minGrabDistance,
+        setPushing,
+    ]);
 
     // ============================
     // Printer Follow Player
@@ -491,6 +508,8 @@ export default function ModelPrinter({
         // ============================
 
         if (isPlacedRef.current) {
+            setPushing(false);
+
             const maxDistance =
                 PRINTER_FINAL_MOVE_SPEED *
                 physicsDelta;
@@ -560,6 +579,8 @@ export default function ModelPrinter({
                 PRINTER_TARGET_TOLERANCE;
 
         if (reachedTargetX) {
+            setPushing(false);
+
             isPlacedRef.current = true;
             setIsPlaced(true);
 
@@ -593,6 +614,7 @@ export default function ModelPrinter({
         // ============================
 
         if (!isGrabbedRef.current) {
+            setPushing(false);
             return;
         }
 
@@ -600,6 +622,7 @@ export default function ModelPrinter({
             grabbedPlayerRef.current;
 
         if (!player) {
+            setPushing(false);
             return;
         }
 
@@ -645,26 +668,69 @@ export default function ModelPrinter({
         // 4. Printer Follow Player
         // ============================
 
-        const targetPrinterX =
-            playerPosition.x -
-            grabSideRef.current *
-            grabDistanceRef.current;
+        const pushDirection =
+            playerVelocity.x >
+            PUSH_VELOCITY_THRESHOLD
+                ? 1
+                : playerVelocity.x <
+                    -PUSH_VELOCITY_THRESHOLD
+                    ? -1
+                    : 0;
 
-        const positionError =
-            targetPrinterX -
-            printerPosition.x;
+        const isPlayerBehindPrinter =
+            pushDirection > 0
+                ? playerPosition.x <
+                    printerPosition.x
+                : pushDirection < 0
+                    ? playerPosition.x >
+                        printerPosition.x
+                    : false;
 
-        const targetVelocityX =
-            playerVelocity.x +
-            positionError *
-            FOLLOW_STRENGTH;
+        /*
+         * ขยับเฉพาะตอน Player อยู่ "หลัง" เครื่องตามทิศที่กำลังเดิน
+         * เท่านั้น: อยู่ซ้ายแล้วเดินขวา หรืออยู่ขวาแล้วเดินซ้าย
+         * ถ้าเดินถอยออกจากเครื่อง ความเร็วเป็น 0 จึงไม่มีการดึง
+         */
+        let finalVelocityX = 0;
+        let isActivelyPushing = false;
 
-        const finalVelocityX =
-            clamp(
-                targetVelocityX,
-                -MAX_FOLLOW_SPEED,
-                MAX_FOLLOW_SPEED,
-            );
+        if (
+            pushDirection !== 0 &&
+            isPlayerBehindPrinter
+        ) {
+            const targetPrinterX =
+                playerPosition.x +
+                pushDirection *
+                grabDistanceRef.current;
+
+            const positionError =
+                targetPrinterX -
+                printerPosition.x;
+
+            const targetSpeedAlongPush =
+                playerVelocity.x *
+                pushDirection +
+                positionError *
+                pushDirection *
+                FOLLOW_STRENGTH;
+
+            const finalSpeedAlongPush =
+                clamp(
+                    targetSpeedAlongPush,
+                    0,
+                    MAX_FOLLOW_SPEED,
+                );
+
+            finalVelocityX =
+                pushDirection *
+                finalSpeedAlongPush;
+
+            isActivelyPushing =
+                finalSpeedAlongPush >
+                PUSH_VELOCITY_THRESHOLD;
+        }
+
+        setPushing(isActivelyPushing);
 
         printer.setLinvel(
             {
@@ -862,7 +928,7 @@ export default function ModelPrinter({
                                             E
                                         </span>
                                         {" "}
-                                        จับ
+                                        ดัน
                                     </>
                                 )}
                             </div>

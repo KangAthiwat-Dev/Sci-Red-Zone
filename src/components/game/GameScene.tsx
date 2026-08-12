@@ -2,12 +2,22 @@
 
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
+import { useState } from "react";
 
 import Map from "./Map";
 import Player from "./Player";
 import ModelPrinter from "./ModelPrinter";
 
+const MODEL_PRINTER_POSITION: [
+  number,
+  number,
+  number,
+] = [16, 1.65, -1.2];
+
 export default function GameScene() {
+  const [isPlayerPushing, setIsPlayerPushing] =
+    useState(false);
+
   return (
     <div className="relative h-full w-full">
       <Canvas
@@ -18,7 +28,7 @@ export default function GameScene() {
            * Player จะเข้ามาควบคุมกล้องต่อ
            */
           position: [0, 4, 12],
-          fov: 60,
+          fov: 55,
           near: 0.1,
           far: 200,
         }}
@@ -40,15 +50,15 @@ export default function GameScene() {
 
         <Physics
           gravity={[0, -18, 0]}
-          debug
         >
           <Map />
 
           <ModelPrinter
-            position={[14, 1.65, -1.2]}
+            position={MODEL_PRINTER_POSITION}
+            onPushingChange={setIsPlayerPushing}
           />
 
-          <Player />
+          <Player isPushing={isPlayerPushing} />
         </Physics>
       </Canvas>
 
@@ -59,7 +69,9 @@ export default function GameScene() {
         <br />
         Space = กระโดด
         <br />
-        C / Ctrl = ย่อ
+        C / Ctrl = กดค้างเพื่อย่อ
+        <br />
+        E = ดัน Printer
       </div>
     </div>
   );
