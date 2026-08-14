@@ -1,39 +1,38 @@
-export type MapId =
-    | "faculty-hall"
-    | "rooftop"
-    | "skybridge"
-    | "science-yard"
-    | "lab-building";
+export type MapId = "faculty-hall" | "stairway" | "laboratory" | "escape";
 
-export type Vector3Tuple = [
-    number,
-    number,
-    number,
-];
+export type Vector3Tuple = [number, number, number];
+
+export type MapTransitionStep = {
+  velocityX: number;
+  velocityZ: number;
+  duration: number;
+  rotationY: number;
+};
 
 export type MapDefinition = {
-    id: MapId;
+  id: MapId;
 
-    label: string;
+  label: string;
 
-    spawnPosition: Vector3Tuple;
+  spawnPosition: Vector3Tuple;
 
-    background: {
-        url?: string;
+  background: {
+    url?: string;
 
-        position: Vector3Tuple;
+    position: Vector3Tuple;
 
-        size: [
-            number,
-            number,
-        ];
+    size: [number, number];
 
-        fallbackColor: string;
-    };
+    fallbackColor: string;
+  };
 
-    exit: {
-        position: Vector3Tuple;
+  enterTransition?: {
+    steps: MapTransitionStep[];
+  };
 
-        halfExtents: Vector3Tuple;
-    };
+  exit: {
+    position: Vector3Tuple;
+
+    halfExtents: Vector3Tuple;
+  };
 };

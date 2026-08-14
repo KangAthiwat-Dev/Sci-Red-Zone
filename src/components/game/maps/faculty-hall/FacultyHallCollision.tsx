@@ -13,7 +13,7 @@ export default function FacultyHallCollision() {
     // ============================
 
     const visual =
-        useGLTF("/maps/map-hall-collision.glb");
+        useGLTF("/maps/faculty-hall/collision.glb");
 
     // ============================
     // Collision Map
@@ -21,7 +21,7 @@ export default function FacultyHallCollision() {
 
     const collision =
         useGLTF(
-            "/maps/map-hall-collision.glb",
+            "/maps/faculty-hall/collision.glb",
         );
 
     // ============================

@@ -137,6 +137,21 @@ type PlayerProps = {
     };
 
     onMapExitWalkComplete?: () => void;
+
+    controlsLocked?: boolean;
+
+    mapEnterTransition?: {
+        active: boolean;
+
+        steps: {
+            velocityX: number;
+            velocityZ: number;
+            duration: number;
+            rotationY: number;
+        }[];
+    };
+
+    onMapEnterWalkComplete?: () => void;
 };
 
 export default function Player({
@@ -144,6 +159,9 @@ export default function Player({
     spawnPosition = [-10, 3, 0],
     mapExitTransition,
     onMapExitWalkComplete,
+    controlsLocked = false,
+    mapEnterTransition,
+    onMapEnterWalkComplete,
 }: PlayerProps) {
     const isPushing = pushState.active;
     const { camera } = useThree();
@@ -174,6 +192,11 @@ export default function Player({
     const mapExitStarted = useRef(false);
     const mapExitCompleted = useRef(false);
     const mapExitStepIndex = useRef(0);
+
+    const mapEnterTimer = useRef(0);
+    const mapEnterStarted = useRef(false);
+    const mapEnterCompleted = useRef(false);
+    const mapEnterStepIndex = useRef(0);
 
     const bodyRef =
         useRef<RapierRigidBody>(null);
@@ -373,7 +396,6 @@ export default function Player({
         // ============================
         // Scripted Map Exit
         // ============================
-
         if (mapExitTransition?.active) {
             // ============================
             // เริ่ม Transition
@@ -517,13 +539,197 @@ export default function Player({
             !wasGrounded.current &&
             stableGrounded.current;
 
-        groundTransitionStartedThisFrame.current =
-            false;
+        groundTransitionStartedThisFrame.current = false;
+
+        // ============================
+        // Map Enter Transition
+        // ============================
+
+        if (mapEnterTransition?.active) {
+            if (!mapEnterStarted.current) {
+                mapEnterStarted.current = true;
+                mapEnterCompleted.current = false;
+
+                mapEnterTimer.current = 0;
+                mapEnterStepIndex.current = 0;
+
+                // ล้าง input เก่า
+                keys.current.left = false;
+                keys.current.right = false;
+                keys.current.run = false;
+                keys.current.crouch = false;
+
+                jumpQueued.current = false;
+            }
+
+            // ==========================
+            // Script จบแล้ว
+            // ==========================
+
+            if (mapEnterCompleted.current) {
+                body.setLinvel(
+                    {
+                        x: 0,
+                        y: currentVelocity.y,
+                        z: 0,
+                    },
+                    true,
+                );
+
+                return;
+            }
+
+            const steps =
+                mapEnterTransition.steps;
+
+            const currentStep =
+                steps[
+                mapEnterStepIndex.current
+                ];
+
+            // ==========================
+            // ไม่มี Step เหลือแล้ว
+            // ==========================
+
+            if (!currentStep) {
+                mapEnterCompleted.current =
+                    true;
+
+                body.setLinvel(
+                    {
+                        x: 0,
+                        y: currentVelocity.y,
+                        z: 0,
+                    },
+                    true,
+                );
+
+                changeAnimation("Idle");
+
+                onMapEnterWalkComplete?.();
+
+                return;
+            }
+
+            mapEnterTimer.current +=
+                safeDelta;
+
+            // ==========================
+            // หันทิศ
+            // ==========================
+
+            if (visualRef.current) {
+                visualRef.current.rotation.y =
+                    currentStep.rotationY;
+            }
+
+            // ==========================
+            // เดินเข้าฉาก
+            // ==========================
+
+            changeAnimation("Jog");
+
+            body.setLinvel(
+                {
+                    x: currentStep.velocityX,
+                    y: currentVelocity.y,
+                    z: currentStep.velocityZ,
+                },
+                true,
+            );
+
+            const enterPosition =
+                body.translation();
+
+            const enterDirection =
+                currentStep.velocityX > 0
+                    ? 1
+                    : currentStep.velocityX < 0
+                        ? -1
+                        : 0;
+
+            updateCamera({
+                position: enterPosition,
+                isMoving: true,
+                direction: enterDirection,
+                isRunning: false,
+                safeDelta,
+            });
+
+            // ==========================
+            // Step ต่อไป
+            // ==========================
+
+            if (
+                mapEnterTimer.current >=
+                currentStep.duration
+            ) {
+                mapEnterTimer.current = 0;
+
+                mapEnterStepIndex.current += 1;
+            }
+
+            return;
+        }
+
+        // ============================
+        // Reset Map Enter
+        // ============================
+
+        if (mapEnterStarted.current) {
+            mapEnterStarted.current = false;
+            mapEnterCompleted.current = false;
+
+            mapEnterTimer.current = 0;
+            mapEnterStepIndex.current = 0;
+        }
+
+        // ============================
+        // Controls Locked
+        // Puzzle / Menu / Cutscene
+        // ============================
+
+        if (controlsLocked) {
+            /*
+             * ล้าง input ที่ค้างอยู่
+             */
+            keys.current.left = false;
+            keys.current.right = false;
+            keys.current.run = false;
+            keys.current.crouch = false;
+
+            jumpQueued.current = false;
+            crouchPressed.current = false;
+
+            /*
+             * หยุดการเคลื่อนที่แนวนอน
+             * แต่ยังให้ Gravity ทำงานได้
+             */
+            body.setLinvel(
+                {
+                    x: 0,
+                    y: currentVelocity.y,
+                    z: 0,
+                },
+                true,
+            );
+
+            /*
+             * ถ้ายืนปกติให้ Idle
+             */
+            if (
+                stableGrounded.current &&
+                !isCrouching.current
+            ) {
+                changeAnimation("Idle");
+            }
+
+            return;
+        }
 
         // ============================
         // Direction
         // ============================
-
         let direction = 0;
 
         if (keys.current.left) {
@@ -2132,41 +2338,26 @@ export default function Player({
 
         const nextAnimation =
             resolvePlayerAnimation({
-                currentAnimation:
-                    currentAnimation.current,
-                isRunJumpingUp:
-                    isRunJumpingUp.current,
-                isClimbing:
-                    isClimbing.current,
-                isHanging:
-                    isHanging.current,
-                isEnteringHang:
-                    isEnteringHang.current,
-                isHangDropping:
-                    isHangDropping.current,
+                currentAnimation: currentAnimation.current,
+                isRunJumpingUp: isRunJumpingUp.current,
+                isClimbing: isClimbing.current,
+                isHanging: isHanging.current,
+                isEnteringHang: isEnteringHang.current,
+                isHangDropping: isHangDropping.current,
                 shouldPreLand,
                 animationGrounded,
-                landingTimer:
-                    landingTimer.current,
-                landingAnimation:
-                    landingAnimation.current,
-                isSliding:
-                    isSliding.current,
-                highFallActive:
-                    highFallActive.current,
+                landingTimer: landingTimer.current,
+                landingAnimation: landingAnimation.current,
+                isSliding: isSliding.current,
+                highFallActive: highFallActive.current,
                 didJump: didJump.current,
-                jumpStartedRunning:
-                    jumpStartedRunning.current,
-                groundTransition:
-                    groundTransition.current,
-                pushTransitionState:
-                    pushTransitionStateRef.current,
-                pushTransitionTimer:
-                    pushTransitionTimerRef.current,
+                jumpStartedRunning: jumpStartedRunning.current,
+                groundTransition: groundTransition.current,
+                pushTransitionState: pushTransitionStateRef.current,
+                pushTransitionTimer: pushTransitionTimerRef.current,
                 isPushing,
                 isMoving,
-                isCrouching:
-                    isCrouching.current,
+                isCrouching: isCrouching.current,
                 isWaitingForRunStop,
                 isRunning,
                 isJogging,
@@ -2230,49 +2421,28 @@ export default function Player({
             !isSliding.current &&
             groundTransition.current === null
         ) {
-            if (
-                !isPushing &&
-                direction > 0 &&
-                currentVelocity.x >= -0.05
-            ) {
-                // เดินขวา
-                visualRef.current.rotation.y =
-                    Math.PI / 2;
-                // 0;
+            if (!isPushing && direction > 0 && currentVelocity.x >= -0.05) {
+                visualRef.current.rotation.y = Math.PI / 2;
             }
 
-            if (
-                !isPushing &&
-                direction < 0 &&
-                currentVelocity.x <= 0.05
-            ) {
-                // เดินซ้าย
-                visualRef.current.rotation.y =
-                    -Math.PI / 2;
-                // Math.PI;
+            if (!isPushing && direction < 0 && currentVelocity.x <= 0.05) {
+                visualRef.current.rotation.y = -Math.PI / 2;
             }
         }
 
         // ============================
         // Reset เมื่อตก Map
         // ============================
+        const position = body.translation();
 
-        const position =
-            body.translation();
-
-        const effectState =
-            playerEffectState.current;
+        const effectState = playerEffectState.current;
 
         effectState.x = position.x;
-        effectState.footY =
-            position.y - PLAYER_FOOT_OFFSET;
+        effectState.footY = position.y - PLAYER_FOOT_OFFSET;
         effectState.z = position.z;
-        effectState.velocityX =
-            currentVelocity.x;
-        effectState.grounded =
-            animationGrounded;
-        effectState.enabled =
-            animationGrounded &&
+        effectState.velocityX = currentVelocity.x;
+        effectState.grounded = animationGrounded;
+        effectState.enabled = animationGrounded &&
             !isCrouching.current &&
             !isSliding.current &&
             !isHanging.current &&
@@ -2323,14 +2493,10 @@ export default function Player({
             slideTimer.current = 0;
             crouchPressed.current = false;
             manualCrouchActive.current = false;
-            standFromManualCrouchQueued.current =
-                false;
+            standFromManualCrouchQueued.current = false;
             clearGroundTransition();
-            groundTransitionStartedThisFrame.current =
-                false;
+            groundTransitionStartedThisFrame.current = false;
 
-            // ถ้าก่อนตกกำลัง Hang / Climb
-            // Gravity อาจถูกปิดอยู่
             body.setGravityScale(
                 1,
                 true,
@@ -2339,7 +2505,6 @@ export default function Player({
             // ============================
             // Reset Position
             // ============================
-
             body.setTranslation(
                 {
                     x: spawnPosition[0],
