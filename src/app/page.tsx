@@ -1,9 +1,16 @@
-import GameScene from "@/components/game/GameScene";
+import GameFlow from "@/components/game/GameFlow";
 
 export default function Home() {
-  return (
-    <main className="fixed inset-0 overflow-hidden bg-black">
-      <GameScene />
-    </main>
-  );
+    return (
+        <main
+            className="
+                h-screen
+                w-screen
+                overflow-hidden
+                bg-black
+            "
+        >
+            <GameFlow />
+        </main>
+    );
 }
