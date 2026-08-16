@@ -147,35 +147,6 @@ export default function StairwayLighting() {
                 intensity={0.2}
             />
 
-            {/* =================================
-                WINDOW LIGHT
-
-                แสงเย็นจากด้านนอก
-            ================================= */}
-
-            {/* <LightBeam
-                position={[
-                    15,
-                    8,
-                    -3,
-                ]}
-                target={[
-                    20,
-                    DEFAULT_LIGHT_TARGET_Y,
-                    0.8,
-                ]}
-                color="#afccef"
-                intensity={72}
-                distance={24}
-                angle={0.4}
-                penumbra={1}
-                outerRadius={4}
-                beamOpacity={0.045}
-                castShadow
-                shadowMapSize={
-                    512
-                }
-            /> */}
 
             {/* =================================
                 CEILING LIGHTS
@@ -207,7 +178,6 @@ export default function StairwayLighting() {
             <CeilingLamp
                 x={48.5}
                 intensity={38}
-                flicker
             />
 
             {/* =================================
@@ -220,24 +190,6 @@ export default function StairwayLighting() {
             <CeilingLamp
                 x={100}
                 intensity={24}
-            />
-
-            {/* =================================
-                Warm Accent
-                ช่วยให้พื้นที่ใต้ไฟ
-                มี bounce อุ่นๆ
-            ================================= */}
-
-            <pointLight
-                position={[
-                    10,
-                    2.5,
-                    -1.5,
-                ]}
-                color="#c89358"
-                intensity={4}
-                distance={10}
-                decay={2}
             />
 
             {/* =================================

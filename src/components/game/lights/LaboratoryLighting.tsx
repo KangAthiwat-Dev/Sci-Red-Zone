@@ -185,49 +185,6 @@ export default function LaboratoryLighting() {
             />
 
             {/* =================================
-                Lab Equipment Accent
-
-                แสงฟ้าเบา ๆ จากอุปกรณ์
-                ช่วยแยกฉากด้านหลัง
-            ================================= */}
-
-            <pointLight
-                position={[
-                    35,
-                    2.5,
-                    -2,
-                ]}
-                color="#67b8ff"
-                intensity={3}
-                distance={9}
-                decay={2}
-            />
-
-            <pointLight
-                position={[
-                    85,
-                    2.5,
-                    -2,
-                ]}
-                color="#68c5ff"
-                intensity={3}
-                distance={9}
-                decay={2}
-            />
-
-            <pointLight
-                position={[
-                    120,
-                    2.5,
-                    -2,
-                ]}
-                color="#7cbcff"
-                intensity={3}
-                distance={9}
-                decay={2}
-            />
-
-            {/* =================================
                 Exit / Danger
             ================================= */}
 

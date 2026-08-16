@@ -182,7 +182,6 @@ export default function HallLighting() {
             <CeilingLamp
                 x={46}
                 intensity={27}
-                flicker
             />
 
             {/* deliberately darker gap */}
