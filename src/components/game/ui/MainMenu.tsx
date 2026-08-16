@@ -12,7 +12,7 @@ export default function MainMenu({
             className="
                 absolute
                 inset-0
-                z-[10000]
+                z-10000
                 flex
                 items-center
                 justify-center
@@ -27,7 +27,7 @@ export default function MainMenu({
                 className="
                     absolute
                     inset-0
-                    bg-gradient-to-b
+                    bg-linear-to-b
                     from-slate-950
                     via-black
                     to-black
@@ -41,8 +41,8 @@ export default function MainMenu({
                     absolute
                     left-1/2
                     top-1/2
-                    h-[500px]
-                    w-[700px]
+                    h-125
+                    w-175
                     -translate-x-1/2
                     -translate-y-1/2
                     rounded-full

@@ -39,6 +39,8 @@ type HoldExitTriggerProps = {
     promptOffsetY?: number;
 
     enabled?: boolean;
+
+    showPrompt?: boolean;
 };
 
 export default function HoldExitTrigger({
@@ -48,6 +50,7 @@ export default function HoldExitTrigger({
     holdDuration = 1.2,
     promptOffsetY = 2,
     enabled = true,
+    showPrompt = true,
 }: HoldExitTriggerProps) {
     const playerInsideRef = useRef(false);
 
@@ -273,7 +276,7 @@ export default function HoldExitTrigger({
                 UI
             ====================== */}
 
-            {enabled && isPlayerNear && !completedRef.current && (
+            {showPrompt && enabled && isPlayerNear && !completedRef.current && (
                 <Html
                     position={[
                         position[0],

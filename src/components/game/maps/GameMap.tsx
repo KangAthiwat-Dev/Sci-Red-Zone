@@ -15,6 +15,7 @@ type GameMapProps = {
     map: MapDefinition;
     isLastMap: boolean;
     onExit: () => void;
+    stairwayExitEnabled?: boolean;
     labExitEnabled?: boolean;
 };
 
@@ -25,15 +26,16 @@ export default function GameMap({
     map,
     isLastMap,
     onExit,
+    stairwayExitEnabled = false,
     labExitEnabled = false,
 }: GameMapProps) {
     return (
         <>
-            <GameBackground
+            {/* <GameBackground
                 background={
                     map.background
                 }
-            />
+            /> */}
 
             {/* ======================
                 Collision / Map
@@ -91,7 +93,12 @@ export default function GameMap({
                         map.exit.halfExtents
                     }
                     holdDuration={1.2}
-                    onComplete={onExit}
+                    enabled={
+                        stairwayExitEnabled
+                    }
+                    onComplete={
+                        onExit
+                    }
                 />
             )}
 

@@ -4,8 +4,8 @@ import { PLAYER_MODEL_SCALE } from "./PlayerModel";
 // Movement
 // ==============================
 
-export const JOG_SPEED = 8.5;
-export const RUN_SPEED = 14.5;
+export const JOG_SPEED = 6.5;
+export const RUN_SPEED = 12.5;
 export const CROUCH_SPEED = 2.5;
 
 export const JUMP_SPEED = 8.5;
@@ -29,9 +29,9 @@ export const HIGH_FALL_START_VELOCITY = -1.5;
 export const SLIDE_MIN_ENTRY_SPEED = 7;
 // ให้การกด Slide ทันทีหลังเริ่ม Sprint ยังมีแรงส่งชัดเจน
 // แต่ถ้าวิ่งมาเร็วกว่านี้จะเก็บ Momentum ที่สูงกว่าไว้ทั้งหมด
-export const SLIDE_MIN_INITIAL_SPEED = 20.5;
+export const SLIDE_MIN_INITIAL_SPEED = 18.5;
 // ค่าสัมประสิทธิ์แรงเสียดทานแบบ exponential (ยิ่งต่ำยิ่งไกล)
-export const SLIDE_DRAG = 0.1;
+export const SLIDE_DRAG = 0.4;
 export const SLIDE_DURATION = 0.95;
 export const SLIDE_BLOCKED_SPEED = 0.2;
 

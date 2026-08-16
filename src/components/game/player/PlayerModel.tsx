@@ -353,55 +353,55 @@ function removeRootMotion(
         const isLandingHips =
             (
                 clip.name ===
-                    CLIP_NAMES.Landing ||
+                CLIP_NAMES.Landing ||
                 clip.name ===
-                    CLIP_NAMES.HardLanding
+                CLIP_NAMES.HardLanding
             ) &&
             isHips;
 
         const isSlideHips =
             clip.name ===
-                CLIP_NAMES.RunningSlide &&
+            CLIP_NAMES.RunningSlide &&
             isHips;
 
         const isHangTransitionHips =
             (
                 clip.name ===
-                    CLIP_NAMES.JumpHang ||
+                CLIP_NAMES.JumpHang ||
                 clip.name ===
-                    CLIP_NAMES.BracedHangDrop
+                CLIP_NAMES.BracedHangDrop
             ) &&
             isHips;
 
         const isRunJumpUpHips =
             clip.name ===
-                CLIP_NAMES.RunJumpUp &&
+            CLIP_NAMES.RunJumpUp &&
             isHips;
 
         const isPushingHips =
             clip.name ===
-                CLIP_NAMES.Pushing &&
+            CLIP_NAMES.Pushing &&
             isHips;
 
         const isGroundTransitionHips =
             (
                 clip.name ===
-                    CLIP_NAMES.CrouchedSpinting ||
+                CLIP_NAMES.CrouchedSpinting ||
                 clip.name ===
-                    CLIP_NAMES.CrouchedStanding ||
+                CLIP_NAMES.CrouchedStanding ||
                 clip.name ===
-                    CLIP_NAMES.RunStop
+                CLIP_NAMES.RunStop
             ) &&
             isHips;
 
         const isClimbHips =
             clip.name ===
-                CLIP_NAMES.Climb &&
+            CLIP_NAMES.Climb &&
             isHips;
 
         const isHangHips =
             clip.name ===
-                CLIP_NAMES.HangingIdle &&
+            CLIP_NAMES.HangingIdle &&
             isHips;
 
         // ===================================
@@ -630,14 +630,14 @@ export default function PlayerModel({
             jumpUpVisualElapsed.current =
                 Math.min(
                     jumpUpVisualElapsed.current +
-                        safeDelta,
+                    safeDelta,
                     JUMP_UP_ANIMATION_DURATION,
                 );
 
             const jumpUpProgress =
                 JUMP_UP_ANIMATION_DURATION > 0
                     ? jumpUpVisualElapsed.current /
-                        JUMP_UP_ANIMATION_DURATION
+                    JUMP_UP_ANIMATION_DURATION
                     : 1;
 
             const settleProgress =
@@ -689,14 +689,14 @@ export default function PlayerModel({
                     jumpUpExitStartOffsetY.current *
                     Math.pow(
                         1 -
-                            nextJumpUpExitTime /
-                                ANIMATION_FADE_DURATION,
+                        nextJumpUpExitTime /
+                        ANIMATION_FADE_DURATION,
                         1.25,
                     );
 
                 jumpUpExitBlendTime.current =
                     nextJumpUpExitTime >=
-                    ANIMATION_FADE_DURATION
+                        ANIMATION_FADE_DURATION
                         ? null
                         : nextJumpUpExitTime;
             } else {
@@ -827,14 +827,180 @@ export default function PlayerModel({
     useEffect(() => {
         scene.traverse((object) => {
             if (
-                object instanceof THREE.Mesh ||
-                object instanceof
-                THREE.SkinnedMesh
+                !(
+                    object instanceof THREE.Mesh ||
+                    object instanceof THREE.SkinnedMesh
+                )
             ) {
-                object.castShadow = true;
-                object.receiveShadow = true;
+                return;
+            }
 
-                object.frustumCulled = false;
+            object.castShadow = true;
+            object.receiveShadow = true;
+            object.frustumCulled = false;
+
+            const makeLitMaterial = (
+                material: THREE.Material,
+            ): THREE.Material => {
+                // =============================
+                // Standard Material
+                // =============================
+
+                if (
+                    material instanceof
+                    THREE.MeshStandardMaterial
+                ) {
+                    /*
+                     * เก็บค่าเดิมก่อนปิด Emissive
+                     */
+                    const originalEmissive =
+                        material.emissive.clone();
+
+                    const originalEmissiveMap =
+                        material.emissiveMap;
+
+                    /*
+                     * ถ้า texture ของโมเดลถูก export
+                     * มาอยู่ใน emissiveMap
+                     *
+                     * ย้ายมาเป็น Base Color Map
+                     * เพื่อให้ texture รับแสงจริง
+                     */
+                    if (
+                        !material.map &&
+                        originalEmissiveMap
+                    ) {
+                        material.map =
+                            originalEmissiveMap;
+
+                        material.map.colorSpace =
+                            THREE.SRGBColorSpace;
+
+                        material.color.set(
+                            0xffffff,
+                        );
+                    }
+
+                    /*
+                     * ถ้าไม่มี Texture แต่ Base Color ดำ
+                     * และสีเดิมอยู่ใน Emissive
+                     * ให้เอาสี Emissive มาเป็น Base Color
+                     */
+                    if (
+                        !material.map &&
+                        material.color.getHex() ===
+                        0x000000 &&
+                        originalEmissive.getHex() !==
+                        0x000000
+                    ) {
+                        material.color.copy(
+                            originalEmissive,
+                        );
+                    }
+
+                    /*
+                     * ถ้ามี Base Color Texture แล้ว
+                     * ใช้สีขาว เพื่อไม่ tint texture ให้ดำ
+                     */
+                    if (material.map) {
+                        material.color.set(
+                            0xffffff,
+                        );
+                    }
+
+                    // =============================
+                    // ปิดการเรืองเอง
+                    // =============================
+
+                    material.emissive.set(
+                        0x000000,
+                    );
+
+                    material.emissiveMap = null;
+
+                    material.emissiveIntensity = 0;
+
+                    // =============================
+                    // Character surface
+                    // =============================
+
+                    material.metalness = 0;
+                    material.roughness = 0.7;
+
+                    material.needsUpdate = true;
+
+                    return material;
+                }
+
+                // =============================
+                // Basic Material
+                // =============================
+
+                if (
+                    material instanceof
+                    THREE.MeshBasicMaterial
+                ) {
+                    const litMaterial =
+                        new THREE.MeshStandardMaterial({
+                            name: material.name,
+
+                            color: material.map
+                                ? 0xffffff
+                                : material.color,
+
+                            map: material.map,
+
+                            alphaMap:
+                                material.alphaMap,
+
+                            transparent:
+                                material.transparent,
+
+                            opacity:
+                                material.opacity,
+
+                            alphaTest:
+                                material.alphaTest,
+
+                            side:
+                                material.side,
+
+                            depthWrite:
+                                material.depthWrite,
+
+                            depthTest:
+                                material.depthTest,
+
+                            vertexColors:
+                                material.vertexColors,
+
+                            metalness: 0,
+                            roughness: 0.7,
+                        });
+
+                    litMaterial.needsUpdate =
+                        true;
+
+                    return litMaterial;
+                }
+
+                return material;
+            };
+
+            if (
+                Array.isArray(
+                    object.material,
+                )
+            ) {
+                object.material =
+                    object.material.map(
+                        makeLitMaterial,
+                    );
+            } else {
+                object.material =
+                    makeLitMaterial(
+                        object.material,
+                    );
             }
         });
     }, [scene]);
@@ -903,7 +1069,7 @@ export default function PlayerModel({
             climbExitBlendTime.current = 0;
             climbExitLiftMode.current =
                 animation === "Jog" ||
-                animation === "Spint"
+                    animation === "Spint"
                     ? "locomotion"
                     : "idle";
             climbExitLiftAdjustment.current =
@@ -1059,7 +1225,7 @@ export default function PlayerModel({
         const playbackTimeScale =
             playbackDuration !== null
                 ? nextAction.getClip().duration /
-                    playbackDuration
+                playbackDuration
                 : 1;
 
         nextAction

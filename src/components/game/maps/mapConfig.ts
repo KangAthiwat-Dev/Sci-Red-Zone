@@ -7,7 +7,7 @@ export const GAME_MAPS: MapDefinition[] = [
   {
     id: "faculty-hall",
     label: "Faculty Hall",
-    spawnPosition: [-9, 1, 0],
+    spawnPosition: [-13.5, 3, 0],
     enterTransition: {
       steps: [
         {
@@ -37,7 +37,7 @@ export const GAME_MAPS: MapDefinition[] = [
   {
     id: "stairway",
     label: "Stairway",
-    spawnPosition: [-9, 1, 0],
+    spawnPosition: [-9, 3, 0],
     enterTransition: {
       steps: [
         {
@@ -55,8 +55,8 @@ export const GAME_MAPS: MapDefinition[] = [
       fallbackColor: "#20242a",
     },
     exit: {
-      position: [115, 2, 0],
-      halfExtents: [0.5, 3, 2],
+      position: [114, 2, 0],
+      halfExtents: [0.6, 3, 2],
     },
   },
 
@@ -66,7 +66,7 @@ export const GAME_MAPS: MapDefinition[] = [
   {
     id: "laboratory",
     label: "Laboratory",
-    spawnPosition: [-9, 1, 0],
+    spawnPosition: [-9, 3, 0],
     enterTransition: {
       steps: [
         {
@@ -110,7 +110,7 @@ export const GAME_MAPS: MapDefinition[] = [
     },
     background: {
       // url: "/backgrounds/map03-yard.webp",
-      position: [5, 7, -5],
+      position: [5, 7, -20],
       size: [34, 18],
       fallbackColor: "#263229",
     },

@@ -2,9 +2,7 @@
 
 import { useEffect } from "react";
 import { useGLTF } from "@react-three/drei";
-import {
-    RigidBody,
-} from "@react-three/rapier";
+import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 
 export default function FacultyHallCollision() {
@@ -12,52 +10,45 @@ export default function FacultyHallCollision() {
     // Visual Map
     // ============================
 
-    const visual =
-        useGLTF("/maps/faculty-hall/collision.glb");
+    const visual = useGLTF(
+        "/maps/faculty-hall/visual.glb",
+    );
 
     // ============================
     // Collision Map
     // ============================
 
-    const collision =
-        useGLTF(
-            "/maps/faculty-hall/collision.glb",
-        );
+    const collision = useGLTF(
+        "/maps/faculty-hall/collision.glb",
+    );
 
     // ============================
     // Shadow
     // ============================
 
     useEffect(() => {
-        visual.scene.traverse(
-            (object) => {
-                if (
-                    object instanceof
-                    THREE.Mesh
-                ) {
-                    object.castShadow =
-                        true;
-
-                    object.receiveShadow =
-                        true;
-                }
-            },
-        );
+        visual.scene.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                object.castShadow = true;
+                object.receiveShadow = true;
+            }
+        });
     }, [visual.scene]);
 
     return (
         <>
             {/* =====================
-                Visual อย่างเดียว
+                Visual Map
+                ไม่มี Physics
             ===================== */}
 
             <primitive
                 object={visual.scene}
-                visible={false}
             />
 
             {/* =====================
-                Physics อย่างเดียว
+                Collision Map
+                มี Physics แต่ซ่อน Mesh
             ===================== */}
 
             <RigidBody
@@ -66,20 +57,22 @@ export default function FacultyHallCollision() {
                 includeInvisible
             >
                 <primitive
-                    object={
-                        collision.scene
-                    }
-                    visible={true}
+                    object={collision.scene}
+                    visible={false}
                 />
             </RigidBody>
         </>
     );
 }
 
+// ============================
+// Preload
+// ============================
+
 useGLTF.preload(
-    "/map/map.glb",
+    "/maps/faculty-hall/visual.glb",
 );
 
 useGLTF.preload(
-    "/map/map-collision.glb",
+    "/maps/faculty-hall/collision.glb",
 );

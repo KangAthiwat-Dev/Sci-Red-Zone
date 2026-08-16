@@ -12,7 +12,7 @@ import {
   GAME_MAPS,
 } from "./maps/mapConfig";
 import Player from "./player/Player";
-import ModelPrinter from "./objects/ModelPrinter";
+import ModelPrinter from "./objects/WoodenCrateModel";
 import {
   DEFAULT_PUSH_INTERACTION_STATE,
   type PushInteractionState,
@@ -33,6 +33,20 @@ import {
 import type {
   EscapePhase,
 } from "./escape/escapeTypes";
+import HallLighting from "./lights/HallLighting";
+import StairwayLighting from "./lights/StairwayLighting";
+import {
+  DEFAULT_STAIRWAY_PROGRESS,
+} from "./stairway/stairwayTypes";
+import StairwayDoorStatus from "./stairway/interactions/StairwayDoorStatus";
+import WirePanel from "./stairway/interactions/WirePanel";
+import KeycardPickup from "./stairway/interactions/KeycardPickup";
+import WirePuzzle from "./stairway/puzzles/WirePuzzle";
+import ObjectiveTracker from "./ui/ObjectiveTracker";
+import {
+  getStairwayObjectiveQuest,
+} from "./stairway/objective/stairwayObjectiveQuest";
+import LaboratoryLighting from "./lights/LaboratoryLighting";
 
 const MODEL_PRINTER_POSITION: [
   number,
@@ -119,6 +133,23 @@ export default function GameScene() {
     mapFadeVisible,
     setMapFadeVisible,
   ] = useState(true);
+
+  const [
+    stairwayProgress,
+    setStairwayProgress,
+  ] = useState(
+    DEFAULT_STAIRWAY_PROGRESS,
+  );
+
+  const [
+    stairwayWirePuzzleOpen,
+    setStairwayWirePuzzleOpen,
+  ] = useState(false);
+
+  const stairwayObjective =
+    getStairwayObjectiveQuest(
+      stairwayProgress,
+    );
 
   const mapTransitionBusyRef = useRef(false);
 
@@ -231,10 +262,60 @@ export default function GameScene() {
     // Stairway → Laboratory
     // ============================
 
-    mapTransitionBusyRef.current =
-      true;
+    if (
+      currentMap.id ===
+      "stairway"
+    ) {
+      // --------------------------
+      // ยังไม่ได้ซ่อมไฟ
+      // --------------------------
 
-    fadeToNextMap();
+      if (
+        !stairwayProgress
+          .powerRestored
+      ) {
+        setStairwayProgress(
+          (current) => ({
+            ...current,
+            doorInspected:
+              true,
+          }),
+        );
+
+        return;
+      }
+
+      // --------------------------
+      // ไฟกลับมาแล้ว
+      // แต่ยังไม่มี Keycard
+      // --------------------------
+
+      if (
+        !stairwayProgress
+          .keycardCollected
+      ) {
+        setStairwayProgress(
+          (current) => ({
+            ...current,
+            keycardRequested:
+              true,
+          }),
+        );
+
+        return;
+      }
+
+      // --------------------------
+      // พร้อมออก Scene
+      // --------------------------
+
+      mapTransitionBusyRef.current =
+        true;
+
+      fadeToNextMap();
+
+      return;
+    }
   }
 
   function startEscapeAlarm() {
@@ -284,7 +365,7 @@ export default function GameScene() {
   return (
     <div className="relative h-full w-full">
       <Canvas
-        shadows
+        shadows="soft"
         camera={{
           position: [0, 4, 12],
           fov: 55,
@@ -292,32 +373,98 @@ export default function GameScene() {
           far: 200,
         }}
       >
-        <color
-          attach="background"
-          args={["#151515"]}
-        />
-
-        <ambientLight intensity={0.8} />
-
-        <directionalLight
-          castShadow
-          position={[-5, 10, 8]}
-          intensity={2}
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-        />
+        {currentMap.id === "faculty-hall" && (
+          <HallLighting />
+        )}
+        {currentMap.id === "stairway" && (
+          <StairwayLighting />
+        )}
+        {currentMap.id === "laboratory" && (
+          <LaboratoryLighting />
+        )}
 
         <Physics
           gravity={[0, -18, 0]}
-          debug={true}
+          debug={false}
         >
           <GameMap
             key={`map-${currentMap.id}`}
             map={currentMap}
             isLastMap={isLastMap}
             onExit={handleMapExitRequested}
+            stairwayExitEnabled={
+              stairwayProgress.powerRestored &&
+              stairwayProgress.keycardCollected
+            }
             labExitEnabled={antidoteCollected}
           />
+
+          {currentMap.id === "stairway" && (
+            <>
+              <StairwayDoorStatus
+                progress={
+                  stairwayProgress
+                }
+                onDoorInspected={() => {
+                  setStairwayProgress(
+                    (current) => ({
+                      ...current,
+                      doorInspected:
+                        true,
+                    }),
+                  );
+                }}
+                onKeycardRequested={() => {
+                  setStairwayProgress(
+                    (current) => ({
+                      ...current,
+                      keycardRequested:
+                        true,
+                    }),
+                  );
+                }}
+              />
+
+              <WirePanel
+                enabled={
+                  stairwayProgress
+                    .doorInspected &&
+                  !stairwayProgress
+                    .powerRestored
+                }
+                completed={
+                  stairwayProgress
+                    .powerRestored
+                }
+                onOpen={() => {
+                  setStairwayWirePuzzleOpen(
+                    true,
+                  );
+                }}
+              />
+
+              <KeycardPickup
+                enabled={
+                  stairwayProgress
+                    .keycardRequested
+                }
+                collected={
+                  stairwayProgress
+                    .keycardCollected
+                }
+                onCollected={() => {
+                  setStairwayProgress(
+                    (current) => ({
+                      ...current,
+
+                      keycardCollected:
+                        true,
+                    }),
+                  );
+                }}
+              />
+            </>
+          )}
 
           {currentMap.id === "escape" && (
             <EscapeControlConsole
@@ -439,6 +586,7 @@ export default function GameScene() {
             }
 
             controlsLocked={
+              stairwayWirePuzzleOpen ||
               activeLabPuzzle !== null ||
               antidoteInteractionActive ||
               mapEnterTransitionActive ||
@@ -509,6 +657,41 @@ export default function GameScene() {
           />
         </Physics>
       </Canvas>
+
+      {currentMap.id ===
+        "stairway" && (
+          <ObjectiveTracker
+            title={
+              stairwayObjective.title
+            }
+            description={
+              stairwayObjective.description
+            }
+          />
+        )}
+
+      {stairwayWirePuzzleOpen && (
+        <WirePuzzle
+          onClose={() => {
+            setStairwayWirePuzzleOpen(
+              false,
+            );
+          }}
+          onComplete={() => {
+            setStairwayProgress(
+              (current) => ({
+                ...current,
+                powerRestored:
+                  true,
+              }),
+            );
+
+            setStairwayWirePuzzleOpen(
+              false,
+            );
+          }}
+        />
+      )}
 
       {/* UI Puzzle */}
       {activeLabPuzzle === "dna" && (

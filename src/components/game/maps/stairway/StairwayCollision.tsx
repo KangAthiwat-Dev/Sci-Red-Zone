@@ -1,26 +1,82 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { useGLTF } from "@react-three/drei";
 import { RigidBody } from "@react-three/rapier";
 
+import * as THREE from "three";
+
 export default function StairwayCollision() {
+    // ==============================
+    // Visual Map
+    // ==============================
+
+    const visual = useGLTF(
+        "/maps/stairway/visual.glb",
+    );
+
+    // ==============================
+    // Collision Map
+    // ==============================
+
     const collision = useGLTF(
         "/maps/stairway/collision.glb",
     );
 
+    // ==============================
+    // Shadow settings
+    // ==============================
+
+    useEffect(() => {
+        visual.scene.traverse((object) => {
+            if (
+                object instanceof THREE.Mesh ||
+                object instanceof
+                    THREE.SkinnedMesh
+            ) {
+                object.castShadow = true;
+                object.receiveShadow = true;
+            }
+        });
+    }, [visual.scene]);
+
     return (
-        <RigidBody
-            type="fixed"
-            colliders="trimesh"
-            includeInvisible
-        >
+        <>
+            {/* =========================
+                Visual Map
+            ========================= */}
+
             <primitive
-                object={collision.scene}
-                visible={true}
+                object={visual.scene}
             />
-        </RigidBody>
+
+            {/* =========================
+                Physics Collision
+
+                ซ่อน mesh collision
+                แต่ยังให้ Rapier ใช้งาน
+            ========================= */}
+
+            <RigidBody
+                type="fixed"
+                colliders="trimesh"
+                includeInvisible
+            >
+                <primitive
+                    object={
+                        collision.scene
+                    }
+                    visible={false}
+                />
+            </RigidBody>
+        </>
     );
 }
+
+useGLTF.preload(
+    "/maps/stairway/visual.glb",
+);
 
 useGLTF.preload(
     "/maps/stairway/collision.glb",

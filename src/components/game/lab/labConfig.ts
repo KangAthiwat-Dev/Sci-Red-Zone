@@ -1,7 +1,7 @@
 export const DNA_CONSOLE_TRIGGER_POSITION:
     [number, number, number] =
     [
-        30,
+        19,
         2,
         0,
     ];
@@ -16,7 +16,7 @@ export const DNA_CONSOLE_TRIGGER_SIZE:
 
 export const CELL_SCANNER_TRIGGER_POSITION:
   [number, number, number] = [
-    60,
+    58,
     2,
     0,
   ];
@@ -30,7 +30,7 @@ export const CELL_SCANNER_TRIGGER_SIZE:
 
 export const CHEMICAL_CONSOLE_TRIGGER_POSITION:
   [number, number, number] = [
-    90,
+    99,
     2,
     0,
   ];
@@ -44,7 +44,7 @@ export const CHEMICAL_CONSOLE_TRIGGER_SIZE:
 
 export const ANTIDOTE_MACHINE_POSITION:
   [number, number, number] = [
-    120,
+    124.5,
     2,
     0,
   ];
