@@ -191,8 +191,8 @@ export default function LaboratoryLighting() {
             <WallEmergencyLight
                 position={[
                     144.5,
-                    5,
-                    0,
+                    4,
+                    -2,
                 ]}
                 rotation={[
                     0,

@@ -20,8 +20,6 @@ import ChemicalConsole from "./lab/interactions/ChemicalConsole";
 import ChemicalPuzzle from "./lab/puzzles/ChemicalPuzzle";
 import AntidoteMachine from "./lab/interactions/AntidoteMachine";
 import EscapeControlConsole from "./escape/EscapeControlConsole";
-import EscapeAlarmOverlay from "./escape/EscapeAlarmOverlay";
-import { ESCAPE_ALARM_DURATION } from "./escape/escapeConfig";
 import type { EscapePhase } from "./escape/escapeTypes";
 import HallLighting from "./lights/HallLighting";
 import StairwayLighting from "./lights/StairwayLighting";
@@ -40,6 +38,8 @@ import EscapeEndingTrigger from "./escape/EscapeEndingTrigger";
 import EndingVideo from "./escape/EndingVideo";
 import GameHUD from "./ui/GameHUD";
 import GameLoadingScreen from "./ui/GameLoadingScreen";
+import EscapeScanDisplay from "./escape/EscapeScanDisplay";
+import { InteractionLockProvider } from "./interactions/InteractionLockContext";
 
 const MODEL_BOXWOOD_POSITION: [number, number, number] = [46, 1.65, -1.2];
 
@@ -100,6 +100,12 @@ export default function GameScene() {
   if (!currentMap) {
     return null;
   }
+
+  const interactionUiLocked =
+    stairwayWirePuzzleOpen ||
+    activeLabPuzzle !== null ||
+    antidoteInteractionActive ||
+    endingStarted;
 
   function startMapExitTransition() {
     if (mapTransitionBusyRef.current) {
@@ -257,20 +263,13 @@ export default function GameScene() {
       return;
     }
 
-    // ============================
-    // เริ่ม Alarm
-    // ============================
-
+    /*
+     * เริ่ม Bio Scan
+     *
+     * ตอนนี้ Player จะถูก Lock
+     * เพราะ escapePhase === "alarm"
+     */
     setEscapePhase("alarm");
-
-    window.setTimeout(() => {
-      // ============================
-      // Alarm จบ
-      // เริ่ม Chase
-      // ============================
-
-      setEscapePhase("chase");
-    }, ESCAPE_ALARM_DURATION);
   }
 
   useEffect(() => {
@@ -377,209 +376,222 @@ export default function GameScene() {
             mapId={currentMap.id}
             setReady={setMapAssetsReady}
           >
-            <Physics gravity={[0, -18, 0]} debug={false}>
-              <GameMap
-                key={`map-${currentMap.id}`}
-                map={currentMap}
-                isLastMap={isLastMap}
-                onExit={handleMapExitRequested}
-                stairwayExitEnabled={
-                  stairwayProgress.powerRestored &&
-                  stairwayProgress.keycardCollected
-                }
-                labExitEnabled={antidoteCollected}
-              />
-
-              {currentMap.id === "stairway" && (
-                <>
-                  <StairwayDoorStatus
-                    progress={stairwayProgress}
-                    onDoorInspected={() => {
-                      setStairwayProgress((current) => ({
-                        ...current,
-                        doorInspected: true,
-                      }));
-                    }}
-                    onKeycardRequested={() => {
-                      setStairwayProgress((current) => ({
-                        ...current,
-                        keycardRequested: true,
-                      }));
-                    }}
-                  />
-
-                  <WirePanel
-                    enabled={
-                      stairwayProgress.doorInspected &&
-                      !stairwayProgress.powerRestored
-                    }
-                    completed={stairwayProgress.powerRestored}
-                    onOpen={() => {
-                      setStairwayWirePuzzleOpen(true);
-                    }}
-                  />
-
-                  <KeycardPickup
-                    enabled={stairwayProgress.keycardRequested}
-                    collected={stairwayProgress.keycardCollected}
-                    onCollected={() => {
-                      setStairwayProgress((current) => ({
-                        ...current,
-
-                        keycardCollected: true,
-                      }));
-                    }}
-                  />
-                </>
-              )}
-
-              {currentMap.id === "escape" && (
-                <EscapeControlConsole
-                  enabled={escapePhase === "control"}
-                  onActivate={startEscapeAlarm}
+            <InteractionLockProvider locked={interactionUiLocked}>
+              <Physics gravity={[0, -18, 0]} debug={false}>
+                <GameMap
+                  key={`map-${currentMap.id}`}
+                  map={currentMap}
+                  isLastMap={isLastMap}
+                  onExit={handleMapExitRequested}
+                  stairwayExitEnabled={
+                    stairwayProgress.powerRestored &&
+                    stairwayProgress.keycardCollected
+                  }
+                  labExitEnabled={antidoteCollected}
                 />
-              )}
 
-              {mapAssetsReady &&
-                currentMap.id === "escape" &&
-                currentMap.exit && (
-                  <EscapeEndingTrigger
-                    position={currentMap.exit.position}
-                    halfExtents={currentMap.exit.halfExtents}
-                    enabled={!endingStarted}
-                    onEnter={startEndingSequence}
+                {currentMap.id === "stairway" && (
+                  <>
+                    <StairwayDoorStatus
+                      progress={stairwayProgress}
+                      onDoorInspected={() => {
+                        setStairwayProgress((current) => ({
+                          ...current,
+                          doorInspected: true,
+                        }));
+                      }}
+                      onKeycardRequested={() => {
+                        setStairwayProgress((current) => ({
+                          ...current,
+                          keycardRequested: true,
+                        }));
+                      }}
+                    />
+
+                    <WirePanel
+                      enabled={
+                        stairwayProgress.doorInspected &&
+                        !stairwayProgress.powerRestored
+                      }
+                      completed={stairwayProgress.powerRestored}
+                      onOpen={() => {
+                        setStairwayWirePuzzleOpen(true);
+                      }}
+                    />
+
+                    <KeycardPickup
+                      enabled={stairwayProgress.keycardRequested}
+                      collected={stairwayProgress.keycardCollected}
+                      onCollected={() => {
+                        setStairwayProgress((current) => ({
+                          ...current,
+
+                          keycardCollected: true,
+                        }));
+                      }}
+                    />
+                  </>
+                )}
+
+                {currentMap.id === "escape" && (
+                  <EscapeControlConsole
+                    enabled={escapePhase === "control"}
+                    onActivate={startEscapeAlarm}
                   />
                 )}
 
-              {/* Puzzles */}
-              {currentMap.id === "laboratory" && (
-                <>
-                  <DNAConsole
-                    completed={dnaCompleted}
-                    onOpen={() => {
-                      setActiveLabPuzzle("dna");
+                {currentMap.id === "escape" && (
+                  <EscapeScanDisplay
+                    active={escapePhase === "alarm"}
+                    onComplete={() => {
+                      setEscapePhase("chase");
                     }}
                   />
+                )}
 
-                  <CellScanner
-                    completed={cellCompleted}
-                    enabled={dnaCompleted}
-                    onOpen={() => {
-                      setActiveLabPuzzle("cell");
+                {mapAssetsReady &&
+                  currentMap.id === "escape" &&
+                  currentMap.exit && (
+                    <EscapeEndingTrigger
+                      position={currentMap.exit.position}
+                      halfExtents={currentMap.exit.halfExtents}
+                      enabled={!endingStarted}
+                      onEnter={startEndingSequence}
+                    />
+                  )}
+
+                {/* Puzzles */}
+                {currentMap.id === "laboratory" && (
+                  <>
+                    <DNAConsole
+                      completed={dnaCompleted}
+                      onOpen={() => {
+                        setActiveLabPuzzle("dna");
+                      }}
+                    />
+
+                    <CellScanner
+                      completed={cellCompleted}
+                      enabled={dnaCompleted}
+                      onOpen={() => {
+                        setActiveLabPuzzle("cell");
+                      }}
+                    />
+
+                    <ChemicalConsole
+                      completed={chemicalCompleted}
+                      enabled={cellCompleted}
+                      onOpen={() => {
+                        setActiveLabPuzzle("chemical");
+                      }}
+                    />
+
+                    <AntidoteMachine
+                      unlocked={chemicalCompleted}
+                      collected={antidoteCollected}
+                      onHoldingChange={setAntidoteInteractionActive}
+                      onCollected={() => {
+                        setAntidoteCollected(true);
+
+                        setAntidoteInteractionActive(false);
+
+                        setShowAntidoteMessage(true);
+
+                        window.setTimeout(() => {
+                          setShowAntidoteMessage(false);
+                        }, 2500);
+                      }}
+                    />
+                  </>
+                )}
+
+                {mapAssetsReady && currentMap.id === "faculty-hall" && (
+                  <ModelBoxWood
+                    position={MODEL_BOXWOOD_POSITION}
+                    onPushStateChange={setPushState}
+                  />
+                )}
+
+                {mapAssetsReady && (
+                  <Player
+                    key={`player-${currentMap.id}`}
+                    pushState={pushState}
+                    spawnPosition={currentMap.spawnPosition}
+                    controlsLocked={
+                      endingStarted ||
+                      stairwayWirePuzzleOpen ||
+                      activeLabPuzzle !== null ||
+                      antidoteInteractionActive ||
+                      mapEnterTransitionActive ||
+                      (currentMap.id === "escape" && escapePhase === "alarm")
+                    }
+                    mapEnterTransition={{
+                      active: mapEnterTransitionActive,
+
+                      steps: currentMap.enterTransition?.steps ?? [],
                     }}
-                  />
-
-                  <ChemicalConsole
-                    completed={chemicalCompleted}
-                    enabled={cellCompleted}
-                    onOpen={() => {
-                      setActiveLabPuzzle("chemical");
+                    onMapEnterWalkComplete={() => {
+                      setMapEnterTransitionActive(false);
                     }}
-                  />
+                    mapExitTransition={{
+                      active: mapExitTransitionActive,
 
-                  <AntidoteMachine
-                    unlocked={chemicalCompleted}
-                    collected={antidoteCollected}
-                    onHoldingChange={setAntidoteInteractionActive}
-                    onCollected={() => {
-                      setAntidoteCollected(true);
+                      steps: [
+                        // ======================
+                        // ช่วง 1
+                        // เดินเข้าไปด้านลึก
+                        // ======================
 
-                      setAntidoteInteractionActive(false);
+                        {
+                          velocityX: 0,
+                          velocityZ: -5,
 
-                      setShowAntidoteMessage(true);
+                          duration: 2.8,
 
-                      window.setTimeout(() => {
-                        setShowAntidoteMessage(false);
-                      }, 2500);
+                          rotationY: Math.PI,
+                        },
+
+                        // ======================
+                        // ช่วง 2
+                        // ถึงมุมแล้วเลี้ยวขวา
+                        // ======================
+
+                        {
+                          velocityX: 4,
+                          velocityZ: 0,
+
+                          duration: 1,
+
+                          rotationY: Math.PI / 2,
+                        },
+                      ],
                     }}
+                    onMapExitWalkComplete={handleMapExitWalkComplete}
                   />
-                </>
-              )}
+                )}
 
-              {mapAssetsReady && currentMap.id === "faculty-hall" && (
-                <ModelBoxWood
-                  position={MODEL_BOXWOOD_POSITION}
-                  onPushStateChange={setPushState}
-                />
-              )}
+                {mapAssetsReady && currentMap.id === "faculty-hall" && <></>}
 
-              {mapAssetsReady && (
-                <Player
-                  key={`player-${currentMap.id}`}
-                  pushState={pushState}
-                  spawnPosition={currentMap.spawnPosition}
-                  controlsLocked={
-                    endingStarted ||
-                    stairwayWirePuzzleOpen ||
-                    activeLabPuzzle !== null ||
-                    antidoteInteractionActive ||
-                    mapEnterTransitionActive ||
-                    (currentMap.id === "escape" && escapePhase === "alarm")
-                  }
-                  mapEnterTransition={{
-                    active: mapEnterTransitionActive,
+                {mapAssetsReady &&
+                  currentMap.id === "escape" &&
+                  escapePhase === "chase" && (
+                    <>
+                      <ZombieEnemy
+                        position={[10, 5, 0]}
+                        patrolDistance={5}
+                        onAttackHit={handleZombieAttack}
+                      />
 
-                    steps: currentMap.enterTransition?.steps ?? [],
-                  }}
-                  onMapEnterWalkComplete={() => {
-                    setMapEnterTransitionActive(false);
-                  }}
-                  mapExitTransition={{
-                    active: mapExitTransitionActive,
-
-                    steps: [
-                      // ======================
-                      // ช่วง 1
-                      // เดินเข้าไปด้านลึก
-                      // ======================
-
-                      {
-                        velocityX: 0,
-                        velocityZ: -5,
-
-                        duration: 2.8,
-
-                        rotationY: Math.PI,
-                      },
-
-                      // ======================
-                      // ช่วง 2
-                      // ถึงมุมแล้วเลี้ยวขวา
-                      // ======================
-
-                      {
-                        velocityX: 4,
-                        velocityZ: 0,
-
-                        duration: 1,
-
-                        rotationY: Math.PI / 2,
-                      },
-                    ],
-                  }}
-                  onMapExitWalkComplete={handleMapExitWalkComplete}
-                />
-              )}
-
-              {mapAssetsReady && currentMap.id === "faculty-hall" && <></>}
-
-              {mapAssetsReady && currentMap.id === "escape" && (
-                <>
-                  <ZombieEnemy
-                    position={[0, 5, 0]}
-                    patrolDistance={5}
-                    onAttackHit={handleZombieAttack}
-                  />
-
-                  <ZombieEnemy
-                    position={[65, 5, 0]}
-                    patrolDistance={4}
-                    variant="crawler"
-                    onAttackHit={handleZombieAttack}
-                  />
-                </>
-              )}
-            </Physics>
+                      <ZombieEnemy
+                        position={[90, 5, 0]}
+                        patrolDistance={4}
+                        variant="crawler"
+                        onAttackHit={handleZombieAttack}
+                      />
+                    </>
+                  )}
+              </Physics>
+            </InteractionLockProvider>
           </MapAssetGate>
         </Suspense>
       </Canvas>
@@ -703,10 +715,6 @@ export default function GameScene() {
           </div>
         </div>
       )}
-
-      <EscapeAlarmOverlay
-        visible={currentMap.id === "escape" && escapePhase === "alarm"}
-      />
 
       <MapFadeOverlay visible={mapFadeVisible} />
 

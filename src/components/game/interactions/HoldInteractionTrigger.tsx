@@ -1,11 +1,14 @@
 "use client";
 
 import { Html } from "@react-three/drei";
+
 import {
   CuboidCollider,
   RigidBody,
 } from "@react-three/rapier";
+
 import { useFrame } from "@react-three/fiber";
+
 import {
   useEffect,
   useRef,
@@ -38,6 +41,15 @@ type HoldInteractionTriggerProps = {
   ) => void;
 };
 
+// ========================================
+// Circular Progress
+// ========================================
+
+const RING_RADIUS = 28;
+
+const RING_CIRCUMFERENCE =
+  2 * Math.PI * RING_RADIUS;
+
 export default function HoldInteractionTrigger({
   position,
   halfExtents = [1.5, 2, 1.5],
@@ -64,31 +76,73 @@ export default function HoldInteractionTrigger({
   const completedRef =
     useRef(false);
 
+  /*
+   * UI refs
+   *
+   * ไม่ใช้ setState ทุก frame แล้ว
+   */
+  const progressCircleRef =
+    useRef<SVGCircleElement | null>(
+      null,
+    );
+
+  const percentageRef =
+    useRef<HTMLSpanElement | null>(
+      null,
+    );
+
   const [
     isPlayerNear,
     setIsPlayerNear,
   ] = useState(false);
 
   const [
-    progress,
-    setProgress,
-  ] = useState(0);
+    isHolding,
+    setIsHolding,
+  ] = useState(false);
 
-  // ==============================
-  // Keyboard
-  // ==============================
+  // ========================================
+  // Reset Circular UI
+  // ========================================
 
-  useEffect(() => {
-    function stopHolding() {
-      holdingRef.current = false;
-
-      holdTimeRef.current = 0;
-
-      setProgress(0);
-
-      onHoldingChange?.(false);
+  function resetProgressUI() {
+    if (
+      progressCircleRef.current
+    ) {
+      progressCircleRef.current.style
+        .strokeDashoffset =
+        `${RING_CIRCUMFERENCE}`;
     }
 
+    if (
+      percentageRef.current
+    ) {
+      percentageRef.current.textContent =
+        "0%";
+    }
+  }
+
+  // ========================================
+  // Stop Holding
+  // ========================================
+
+  function stopHolding() {
+    holdingRef.current = false;
+
+    holdTimeRef.current = 0;
+
+    setIsHolding(false);
+
+    resetProgressUI();
+
+    onHoldingChange?.(false);
+  }
+
+  // ========================================
+  // Keyboard
+  // ========================================
+
+  useEffect(() => {
     function handleKeyDown(
       event: KeyboardEvent,
     ) {
@@ -117,7 +171,16 @@ export default function HoldInteractionTrigger({
 
       event.preventDefault();
 
+      /*
+       * เริ่มใหม่จาก 0
+       */
+      holdTimeRef.current = 0;
+
       holdingRef.current = true;
+
+      setIsHolding(true);
+
+      resetProgressUI();
 
       onHoldingChange?.(true);
     }
@@ -131,10 +194,26 @@ export default function HoldInteractionTrigger({
         return;
       }
 
+      /*
+       * ถ้าทำเสร็จแล้ว
+       * ไม่ต้อง reset
+       */
+      if (
+        completedRef.current
+      ) {
+        return;
+      }
+
       stopHolding();
     }
 
     function handleBlur() {
+      if (
+        completedRef.current
+      ) {
+        return;
+      }
+
       stopHolding();
     }
 
@@ -174,9 +253,9 @@ export default function HoldInteractionTrigger({
     onHoldingChange,
   ]);
 
-  // ==============================
+  // ========================================
   // Hold Progress
-  // ==============================
+  // ========================================
 
   useFrame((_, delta) => {
     if (
@@ -189,42 +268,120 @@ export default function HoldInteractionTrigger({
     }
 
     const safeDelta =
-      Math.min(delta, 0.1);
+      Math.min(
+        delta,
+        0.1,
+      );
 
     holdTimeRef.current +=
       safeDelta;
 
-    const nextProgress =
+    const progress =
       Math.min(
         holdTimeRef.current /
           holdDuration,
         1,
       );
 
-    setProgress(
-      nextProgress,
-    );
+    // ========================================
+    // Circular Ring
+    // ========================================
+
+    const offset =
+      RING_CIRCUMFERENCE *
+      (1 - progress);
 
     if (
-      holdTimeRef.current <
-      holdDuration
+      progressCircleRef.current
     ) {
+      progressCircleRef.current.style
+        .strokeDashoffset =
+        `${offset}`;
+    }
+
+    // ========================================
+    // Percentage
+    // ========================================
+
+    if (
+      percentageRef.current
+    ) {
+      percentageRef.current.textContent =
+        `${Math.round(
+          progress * 100,
+        )}%`;
+    }
+
+    // ========================================
+    // ยังไม่เต็ม
+    // ========================================
+
+    if (progress < 1) {
       return;
     }
+
+    // ========================================
+    // Complete
+    // ========================================
 
     completedRef.current = true;
 
     holdingRef.current = false;
 
-    setProgress(1);
+    /*
+     * บังคับวงให้เต็ม 100%
+     */
+    if (
+      progressCircleRef.current
+    ) {
+      progressCircleRef.current.style
+        .strokeDashoffset = "0";
+    }
+
+    if (
+      percentageRef.current
+    ) {
+      percentageRef.current.textContent =
+        "100%";
+    }
+
+    setIsHolding(false);
 
     onHoldingChange?.(false);
 
     onComplete();
   });
 
+  // ========================================
+  // Reset ถ้า disabled
+  // ========================================
+
+  useEffect(() => {
+    if (enabled) {
+      return;
+    }
+
+    if (
+      completedRef.current
+    ) {
+      return;
+    }
+
+    holdingRef.current = false;
+
+    holdTimeRef.current = 0;
+
+    setIsHolding(false);
+
+    resetProgressUI();
+  }, [enabled]);
+
   return (
     <>
+      {/* ======================================
+          Sensor
+      ====================================== */}
+
       <RigidBody
         type="fixed"
         colliders={false}
@@ -291,19 +448,20 @@ export default function HoldInteractionTrigger({
             playerNearRef.current =
               false;
 
-            holdingRef.current =
-              false;
-
-            holdTimeRef.current = 0;
-
-            setProgress(0);
-
             setIsPlayerNear(false);
 
-            onHoldingChange?.(false);
+            if (
+              !completedRef.current
+            ) {
+              stopHolding();
+            }
           }}
         />
       </RigidBody>
+
+      {/* ======================================
+          Interaction UI
+      ====================================== */}
 
       {enabled &&
         isPlayerNear &&
@@ -318,56 +476,156 @@ export default function HoldInteractionTrigger({
           >
             <div
               className="
-                w-56
-                rounded-lg
-                bg-black/80
-                px-4
-                py-3
-                text-center
-                text-sm
+                flex
+                min-w-[270px]
+                select-none
+                items-center
+                gap-4
+                rounded-xl
+                border
+                border-white/10
+                bg-black/90
+                px-5
+                py-4
                 text-white
-                shadow-lg
-                backdrop-blur-sm
+                shadow-2xl
+                backdrop-blur-md
               "
             >
-              <div>
-                <span
-                  className="
-                    mr-2
-                    rounded
-                    bg-white
-                    px-2
-                    py-1
-                    font-bold
-                    text-black
-                  "
-                >
-                  E
-                </span>
-
-                {label}
-              </div>
+              {/* ==========================
+                  Circular Progress
+              ========================== */}
 
               <div
                 className="
-                  mt-3
-                  h-1.5
-                  overflow-hidden
-                  rounded-full
-                  bg-white/20
+                  relative
+                  h-[72px]
+                  w-[72px]
+                  shrink-0
+                "
+              >
+                <svg
+                  viewBox="0 0 72 72"
+                  className="
+                    h-full
+                    w-full
+                    -rotate-90
+                  "
+                >
+                  {/* Background Ring */}
+
+                  <circle
+                    cx="36"
+                    cy="36"
+                    r={
+                      RING_RADIUS
+                    }
+                    fill="none"
+                    stroke="rgba(255,255,255,0.15)"
+                    strokeWidth="6"
+                  />
+
+                  {/* Progress Ring */}
+
+                  <circle
+                    ref={
+                      progressCircleRef
+                    }
+                    cx="36"
+                    cy="36"
+                    r={
+                      RING_RADIUS
+                    }
+                    fill="none"
+                    stroke="#34d399"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeDasharray={
+                      RING_CIRCUMFERENCE
+                    }
+                    strokeDashoffset={
+                      RING_CIRCUMFERENCE
+                    }
+                  />
+                </svg>
+
+                {/* E / % ตรงกลาง */}
+
+                <div
+                  className="
+                    absolute
+                    inset-0
+                    flex
+                    items-center
+                    justify-center
+                  "
+                >
+                  {!isHolding ? (
+                    <span
+                      className="
+                        flex
+                        h-10
+                        w-10
+                        items-center
+                        justify-center
+                        rounded-lg
+                        bg-white
+                        text-xl
+                        font-black
+                        text-black
+                      "
+                    >
+                      E
+                    </span>
+                  ) : (
+                    <span
+                      ref={
+                        percentageRef
+                      }
+                      className="
+                        text-xs
+                        font-bold
+                        text-emerald-300
+                      "
+                    >
+                      0%
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* ==========================
+                  Text
+              ========================== */}
+
+              <div
+                className="
+                  min-w-0
                 "
               >
                 <div
                   className="
-                    h-full
-                    bg-white
-                    transition-[width]
+                    text-base
+                    font-semibold
+                    whitespace-nowrap
                   "
-                  style={{
-                    width:
-                      `${progress * 100}%`,
-                  }}
-                />
+                >
+                  {isHolding
+                    ? "กำลังสังเคราะห์สาร..."
+                    : label}
+                </div>
+
+                <div
+                  className="
+                    mt-1
+                    text-xs
+                    text-white/45
+                  "
+                >
+                  {isHolding
+                    ? "กรุณากด E ค้างไว้"
+                    : "กด E ค้างเพื่อเริ่ม"}
+                </div>
               </div>
             </div>
           </Html>

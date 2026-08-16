@@ -2,39 +2,28 @@
 
 import SceneImage from "./SceneImage";
 
-import { SET_DRESSING, type SceneMapId } from "./setDressingConfig";
+import { SCENE_DRESSING, type SceneDecorationMap } from "./setDressingConfig";
 
 type SceneSetDressingProps = {
-  mapId: SceneMapId;
+  mapId: keyof SceneDecorationMap;
 };
 
 export default function SceneSetDressing({ mapId }: SceneSetDressingProps) {
-  const config = SET_DRESSING[mapId];
+  const decorations = SCENE_DRESSING[mapId] ?? [];
 
   return (
     <>
-      {/* =========================
-                Background
-            ========================= */}
-
-      {config.background.map((item, index) => (
-        <SceneImage key={`background-${index}`} {...item} />
-      ))}
-
-      {/* =========================
-                Midground
-            ========================= */}
-
-      {config.midground.map((item, index) => (
-        <SceneImage key={`midground-${index}`} {...item} />
-      ))}
-
-      {/* =========================
-                Foreground
-            ========================= */}
-
-      {config.foreground.map((item, index) => (
-        <SceneImage key={`foreground-${index}`} {...item} />
+      {decorations.map((decoration) => (
+        <SceneImage
+          key={decoration.id}
+          src={decoration.src}
+          position={decoration.position}
+          size={decoration.size}
+          rotation={decoration.rotation}
+          opacity={decoration.opacity}
+          flipX={decoration.flipX}
+          renderOrder={decoration.renderOrder}
+        />
       ))}
     </>
   );

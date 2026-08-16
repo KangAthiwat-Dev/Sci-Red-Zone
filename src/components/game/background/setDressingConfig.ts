@@ -1,7 +1,7 @@
-export type SceneMapId = "faculty-hall" | "stairway" | "laboratory" | "escape";
+export type SceneDecoration = {
+  id: string;
 
-export type DressingItem = {
-  url: string;
+  src: string;
 
   position: [number, number, number];
 
@@ -13,463 +13,193 @@ export type DressingItem = {
 
   flipX?: boolean;
 
-  color?: string;
-
   renderOrder?: number;
 };
 
-type SceneDressingConfig = {
-  background: DressingItem[];
-
-  midground: DressingItem[];
-
-  foreground: DressingItem[];
+export type SceneDecorationMap = {
+  "faculty-hall": SceneDecoration[];
+  stairway: SceneDecoration[];
+  laboratory: SceneDecoration[];
+  escape: SceneDecoration[];
 };
 
 // ========================================
-// Shared Assets
+// Z LAYERS
 // ========================================
-
-const FOREST = "/decorations/shared/forest-bg.png";
-
-const BRANCH_WIDE = "/decorations/shared/branch-wide.png";
-
-const BRANCH_LONG = "/decorations/shared/branch-long.png";
-
-const PIPE_COMPLEX = "/decorations/shared/pipe-complex.png";
-
-const PIPE_THIN = "/decorations/shared/pipe-thin.png";
-
-const PIPE_THICK = "/decorations/shared/pipe-thick.png";
-
-const POLE = "/decorations/shared/pole.png";
-
-// ========================================
-// Config
-// ========================================
-
-export const SET_DRESSING: Record<SceneMapId, SceneDressingConfig> = {
-  // =====================================
-  // Faculty Hall
-  // =====================================
-
-  "faculty-hall": {
-    background: [
-      {
-        url: FOREST,
-
-        position: [28, 11, -20],
-
-        size: [80, 30],
-
-        opacity: 0.22,
-
-        color: "#536372",
-      },
-
-      {
-        url: FOREST,
-
-        position: [90, 11, -20],
-
-        size: [80, 30],
-
-        opacity: 0.18,
-
-        flipX: true,
-
-        color: "#536372",
-      },
-    ],
-
-    midground: [
-      {
-        url: PIPE_THIN,
-        position: [-15, 11.5, -1.8],
-        size: [24, 4],
-      },
-      {
-        url: PIPE_THIN,
-        position: [-15, 11.25, -2.25],
-        size: [24, 4],
-      },
-
-      {
-        url: PIPE_COMPLEX,
-
-        position: [12, 7.4, -9.5],
-
-        size: [22, 6],
-
-        flipX: true,
-      },
-
-      {
-        url: PIPE_THICK,
-
-        position: [72, 7.5, -2.8],
-
-        size: [20, 4],
-      },
-    ],
-
-    foreground: [
-      {
-        url: BRANCH_WIDE,
-
-        position: [28, 10, 5],
-
-        size: [28, 9],
-
-        opacity: 0.36,
-
-        renderOrder: 10,
-      },
-    ],
-  },
-
-  // =====================================
-  // Stairway
-  // =====================================
-
-  stairway: {
-    background: [
-      {
-        url: FOREST,
-
-        position: [25, 11, -20],
-
-        size: [75, 30],
-
-        opacity: 0.16,
-
-        color: "#46515b",
-      },
-
-      {
-        url: FOREST,
-
-        position: [88, 11, -20],
-
-        size: [75, 30],
-
-        opacity: 0.16,
-
-        flipX: true,
-
-        color: "#46515b",
-      },
-
-      {
-        url: FOREST,
-
-        position: [145, 11, -20],
-
-        size: [75, 30],
-
-        opacity: 0.15,
-
-        color: "#46515b",
-      },
-    ],
-
-    midground: [
-      {
-        url: PIPE_COMPLEX,
-
-        position: [34, 6, -2.8],
-
-        size: [25, 9],
-      },
-
-      {
-        url: PIPE_THIN,
-
-        position: [-14, 11, -9],
-
-        size: [25, 4],
-
-        flipX: true,
-      },
-      {
-        url: PIPE_THIN,
-
-        position: [-14, 10.25, -8.5],
-
-        size: [30, 4],
-
-        flipX: true,
-      },
-      {
-        url: PIPE_THIN,
-
-        position: [10, 11, -8.5],
-
-        size: [25, 4],
-
-        flipX: true,
-      },
-      {
-        url: PIPE_THIN,
-
-        position: [15, 10.25, -8.5],
-
-        size: [30, 4],
-
-        flipX: true,
-      },
-
-      {
-        url: POLE,
-
-        position: [103, 6.5, -1.8],
-
-        size: [4, 13],
-
-        opacity: 0.7,
-      },
-    ],
-
-    foreground: [
-      {
-        url: BRANCH_LONG,
-
-        position: [48, 12, 5.5],
-
-        size: [30, 8],
-
-        opacity: 0.3,
-
-        flipX: true,
-
-        renderOrder: 10,
-      },
-
-      {
-        url: BRANCH_WIDE,
-
-        position: [105, 11, 5],
-
-        size: [26, 8],
-
-        opacity: 0.27,
-
-        renderOrder: 10,
-      },
-    ],
-  },
-
-  // =====================================
-  // Laboratory
-  // =====================================
-
-  laboratory: {
-    background: [
-      {
-        url: FOREST,
-
-        position: [30, 11, -21],
-
-        size: [80, 30],
-
-        opacity: 0.12,
-
-        color: "#415364",
-      },
-
-      {
-        url: FOREST,
-
-        position: [95, 11, -21],
-
-        size: [80, 30],
-
-        opacity: 0.12,
-
-        flipX: true,
-
-        color: "#415364",
-      },
-
-      {
-        url: FOREST,
-
-        position: [155, 11, -21],
-
-        size: [80, 30],
-
-        opacity: 0.1,
-
-        color: "#415364",
-      },
-    ],
-
-    midground: [
-      {
-        url: PIPE_THICK,
-
-        position: [20, 7.4, -2.4],
-
-        size: [22, 4.5],
-      },
-
-      {
-        url: PIPE_COMPLEX,
-
-        position: [62, 6.2, -2.6],
-
-        size: [25, 9],
-
-        flipX: true,
-      },
-
-      {
-        url: PIPE_THIN,
-
-        position: [100, 7.7, -2.5],
-
-        size: [28, 4],
-      },
-
-      {
-        url: PIPE_COMPLEX,
-
-        position: [133, 6.5, -2.8],
-
-        size: [22, 8],
-      },
-    ],
-
-    foreground: [
-      {
-        url: BRANCH_LONG,
-
-        position: [38, 12, 5.3],
-
-        size: [28, 8],
-
-        opacity: 0.22,
-
-        renderOrder: 10,
-      },
-
-      {
-        url: BRANCH_WIDE,
-
-        position: [122, 11, 5.4],
-
-        size: [30, 9],
-
-        opacity: 0.25,
-
-        flipX: true,
-
-        renderOrder: 10,
-      },
-    ],
-  },
-
-  // =====================================
-  // Escape
-  // =====================================
-
-  escape: {
-    background: [
-      {
-        url: FOREST,
-
-        position: [25, 10, -20],
-
-        size: [80, 30],
-      },
-
-      {
-        url: FOREST,
-
-        position: [88, 10, -20],
-
-        size: [80, 30],
-
-        flipX: true,
-      },
-
-      {
-        url: FOREST,
-
-        position: [150, 10, -20],
-
-        size: [80, 30],
-      },
-    ],
-
-    midground: [
-      {
-        url: POLE,
-
-        position: [23, 6, -1.5],
-
-        size: [4, 12],
-      },
-
-      {
-        url: PIPE_COMPLEX,
-
-        position: [67, 5, -2.5],
-
-        size: [26, 9],
-      },
-
-      {
-        url: PIPE_THICK,
-
-        position: [105, 5.8, -2],
-
-        size: [30, 5],
-
-        flipX: true,
-      },
-    ],
-
-    foreground: [
-      {
-        url: BRANCH_WIDE,
-
-        position: [20, 11, 5.5],
-
-        size: [30, 9],
-
-        opacity: 0.72,
-
-        renderOrder: 10,
-      },
-
-      {
-        url: BRANCH_LONG,
-
-        position: [70, 12, 5.7],
-
-        size: [34, 9],
-
-        flipX: true,
-
-        opacity: 0.75,
-
-        renderOrder: 10,
-      },
-
-      {
-        url: BRANCH_WIDE,
-
-        position: [125, 11, 5.4],
-
-        size: [30, 9],
-
-        flipX: true,
-
-        opacity: 0.7,
-
-        renderOrder: 10,
-      },
-    ],
-  },
+//
+// Player โดยประมาณ = z 0
+//
+// -20     background ไกล
+// -3      decoration หลัง Player
+// -1      object หลัง Player
+//  0      gameplay
+// +1      object หน้า Playerเล็กน้อย
+// +3/+5   foreground
+//
+
+export const SCENE_DRESSING: SceneDecorationMap = {
+  // ========================================
+  // MAP 1
+  // FACULTY HALL
+  // ========================================
+
+  "faculty-hall": [
+    {
+      id: "hall-door-01",
+      src: "/decorations/doors/auto_slide_door.png",
+      position: [-18, 3.3, -6],
+      size: [8, 6],
+    },
+
+    // Windows
+    {
+      id: "hall-window-01",
+      src: "/decorations/windows/break_window_verti.png",
+      position: [20, 5, -9.8],
+      size: [4.4, 6.6],
+    },
+    {
+      id: "hall-window-02",
+      src: "/decorations/windows/break_window_verti.png",
+      position: [16, 5, -9.8],
+      size: [4.4, 6.6],
+    },
+    {
+      id: "hall-window-03",
+      src: "/decorations/windows/break_window_verti.png",
+      position: [12, 5, -9.8],
+      size: [4.4, 6.6],
+    },
+    {
+      id: "hall-window-04",
+      src: "/decorations/windows/break_window_verti.png",
+      position: [8, 5, -9.8],
+      size: [4.4, 6.6],
+    },
+    {
+      id: "hall-window-05",
+      src: "/decorations/windows/break_window_verti.png",
+      position: [4, 5, -9.8],
+      size: [4.4, 6.6],
+    },
+
+    // Boxs
+    {
+      id: "hall-box-01",
+      src: "/decorations/box/box.png",
+      position: [2, 1.5, -4.8],
+      size: [4.4, 3],
+      rotation: [0, 0, 0],
+    },
+
+    // Pipe
+    {
+      id: "hall-pipe-01",
+      src: "/decorations/pipes/pipe-thin.png",
+      position: [2, 8.7, -9],
+      size: [15, 2],
+      rotation: [0, 0, 0],
+    },
+    {
+      id: "hall-pipe-02",
+      src: "/decorations/pipes/pipe-thin.png",
+      position: [15.5, 8.7, -9],
+      size: [15, 2],
+      rotation: [0, 0, 0],
+    },
+    {
+      id: "hall-pipe-03",
+      src: "/decorations/pipes/pipe-thin.png",
+      position: [2, 8.9, -8],
+      size: [15, 2],
+      rotation: [0, 0, 0],
+    },
+    {
+      id: "hall-pipe-04",
+      src: "/decorations/pipes/pipe-thin.png",
+      position: [15.5, 8.9, -8],
+      size: [15, 2],
+      rotation: [0, 0, 0],
+    },
+  ],
+
+  // ========================================
+  // MAP 2
+  // STAIRWAY
+  // ========================================
+
+  stairway: [
+    // {
+    //   id: "stairway-locker-01",
+    //   src: "/decorations/stairway/locker.png",
+    //   position: [12, 1.6, -1],
+    //   size: [2, 3.2],
+    // },
+    // {
+    //   id: "stairway-chair-01",
+    //   src: "/decorations/stairway/broken-chair.png",
+    //   position: [28, 0.65, -0.7],
+    //   size: [1.7, 1.3],
+    //   flipX: true,
+    // },
+  ],
+
+  // ========================================
+  // MAP 3
+  // LABORATORY
+  // ========================================
+
+  laboratory: [
+    {
+      id: "lab-dna-01",
+      src: "/decorations/machine/dna.png",
+      position: [19, 4, -2],
+      size: [7, 9],
+      rotation: [0, 0, 0],
+    },
+    {
+      id: "lab-cell-01",
+      src: "/decorations/machine/cell.png",
+      position: [58, 3.7, -2],
+      size: [5.5, 10],
+      rotation: [0, 0, 0],
+    },
+    {
+      id: "lab-chemical-01",
+      src: "/decorations/machine/chemical.png",
+      position: [99, 3.9, -2],
+      size: [5.6, 9],
+      rotation: [0, 0, 0],
+    },
+    {
+      id: "lab-anly-01",
+      src: "/decorations/machine/analy.png",
+      position: [119, 3.9, -3],
+      size: [18, 9],
+      rotation: [0, 0, 0],
+    },
+    {
+      id: "lab-get-se-01",
+      src: "/decorations/machine/get_se.png",
+      position: [124.5, 1.9, -2],
+      size: [6, 4],
+      rotation: [0, 0, 0],
+    },
+    
+  ],
+
+  // ========================================
+  // MAP 4
+  // ESCAPE
+  // ========================================
+
+  escape: [
+    {
+      id: "escape-system-control-01",
+      src: "/decorations/machine/system_contrl.png",
+      position: [22, 4, -2],
+      size: [9, 8],
+      rotation: [0, 0, 0],
+    },
+  ],
 };

@@ -4,17 +4,25 @@ import {
     useEffect,
     useState,
 } from "react";
+
 import {
     Html,
 } from "@react-three/drei";
+
 import {
     CuboidCollider,
 } from "@react-three/rapier";
+
 import {
     WIRE_PANEL_POSITION,
     WIRE_PANEL_SENSOR_SIZE,
 } from "../stairwayConfig";
+
 import ElectricalPanel from "../../objects/ElectricalPanel";
+
+import {
+    useInteractionLocked,
+} from "../../interactions/InteractionLockContext";
 
 type WirePanelProps = {
     enabled: boolean;
@@ -34,25 +42,42 @@ export default function WirePanel({
         setPlayerNear,
     ] = useState(false);
 
+    // ========================================
+    // Global Interaction Lock
+    // ========================================
+
+    const interactionLocked =
+        useInteractionLocked();
+
+    const canInteract =
+        enabled &&
+        !completed &&
+        !interactionLocked;
+
+    // ========================================
+    // Keyboard
+    // ========================================
+
     useEffect(() => {
         function handleKeyDown(
             event: KeyboardEvent,
         ) {
             if (
                 event.code !==
-                "KeyE" ||
+                    "KeyE" ||
                 event.repeat
             ) {
                 return;
             }
 
             if (
-                !enabled ||
-                completed ||
+                !canInteract ||
                 !playerNear
             ) {
                 return;
             }
+
+            event.preventDefault();
 
             onOpen();
         }
@@ -69,8 +94,7 @@ export default function WirePanel({
             );
         };
     }, [
-        completed,
-        enabled,
+        canInteract,
         onOpen,
         playerNear,
     ]);
@@ -82,8 +106,8 @@ export default function WirePanel({
             }
         >
             {/* =========================
-            Electrical Panel Object
-        ========================= */}
+                Electrical Panel Object
+            ========================= */}
 
             <ElectricalPanel
                 completed={completed}
@@ -110,9 +134,7 @@ export default function WirePanel({
                         return;
                     }
 
-                    setPlayerNear(
-                        true,
-                    );
+                    setPlayerNear(true);
                 }}
                 onIntersectionExit={({
                     other,
@@ -126,17 +148,15 @@ export default function WirePanel({
                         return;
                     }
 
-                    setPlayerNear(
-                        false,
-                    );
+                    setPlayerNear(false);
                 }}
             />
 
             {/* =========================
-            Interaction UI
-        ========================= */}
-            {enabled &&
-                !completed &&
+                Interaction UI
+            ========================= */}
+
+            {canInteract &&
                 playerNear && (
                     <group
                         position={[
@@ -145,11 +165,11 @@ export default function WirePanel({
                             0,
                         ]}
                     >
-                        <Html
-                            center
-                        >
+                        <Html center>
                             <div
                                 className="
+                                    pointer-events-none
+                                    select-none
                                     whitespace-nowrap
                                     rounded-lg
                                     bg-black/80
@@ -157,8 +177,6 @@ export default function WirePanel({
                                     py-2
                                     text-sm
                                     text-white
-                                    pointer-events-none
-                                    select-none
                                 "
                             >
                                 <span

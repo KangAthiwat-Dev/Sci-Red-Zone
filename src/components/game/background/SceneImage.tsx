@@ -1,132 +1,51 @@
 "use client";
 
-import {
-    useEffect,
-} from "react";
-
-import {
-    useTexture,
-} from "@react-three/drei";
-
-import * as THREE from "three";
-
-type Vector3Tuple = [
-    number,
-    number,
-    number,
-];
+import { useTexture } from "@react-three/drei";
 
 type SceneImageProps = {
-    url: string;
+  src: string;
 
-    position:
-        Vector3Tuple;
+  position: [number, number, number];
 
-    size: [
-        number,
-        number,
-    ];
+  size: [number, number];
 
-    rotation?:
-        Vector3Tuple;
+  rotation?: [number, number, number];
 
-    opacity?: number;
+  opacity?: number;
 
-    flipX?: boolean;
+  flipX?: boolean;
 
-    color?: string;
-
-    renderOrder?: number;
+  renderOrder?: number;
 };
 
 export default function SceneImage({
-    url,
-
-    position,
-
-    size,
-
-    rotation = [
-        0,
-        0,
-        0,
-    ],
-
-    opacity = 1,
-
-    flipX = false,
-
-    color = "#ffffff",
-
-    renderOrder = 0,
+  src,
+  position,
+  size,
+  rotation = [0, 0, 0],
+  opacity = 1,
+  flipX = false,
+  renderOrder = 0,
 }: SceneImageProps) {
-    const texture =
-        useTexture(
-            url,
-        );
+  const texture = useTexture(src);
 
-    useEffect(() => {
-        texture.colorSpace =
-            THREE.SRGBColorSpace;
+  return (
+    <mesh
+      position={position}
+      rotation={rotation}
+      scale={[flipX ? -1 : 1, 1, 1]}
+      renderOrder={renderOrder}
+    >
+      <planeGeometry args={[size[0], size[1]]} />
 
-        texture.needsUpdate =
-            true;
-    }, [
-        texture,
-    ]);
-
-    return (
-        <mesh
-            position={
-                position
-            }
-            rotation={
-                rotation
-            }
-            scale={[
-                flipX
-                    ? -1
-                    : 1,
-
-                1,
-
-                1,
-            ]}
-            renderOrder={
-                renderOrder
-            }
-        >
-            <planeGeometry
-                args={[
-                    size[0],
-                    size[1],
-                ]}
-            />
-
-            <meshBasicMaterial
-                map={
-                    texture
-                }
-                color={
-                    color
-                }
-                transparent
-                opacity={
-                    opacity
-                }
-                alphaTest={
-                    0.03
-                }
-                side={
-                    THREE.DoubleSide
-                }
-                depthWrite={
-                    false
-                }
-                toneMapped={
-                    false
-                }
-            />
-        </mesh>
-    );
+      <meshBasicMaterial
+        map={texture}
+        transparent
+        opacity={opacity}
+        alphaTest={0.03}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  );
 }
