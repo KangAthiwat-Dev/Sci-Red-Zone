@@ -9,7 +9,7 @@ import type {
 import FacultyHallCollision from "./faculty-hall/FacultyHallCollision";
 import StairwayCollision from "./stairway/StairwayCollision";
 import LaboratoryCollision from "./laboratory/LaboratoryCollision";
-import EscapeCollision from "./escape/EscapeCollision";
+import EscapeCollision from "./Escape/EscapeCollision";
 
 type GameMapProps = {
     map: MapDefinition;

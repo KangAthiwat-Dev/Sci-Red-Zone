@@ -1,27 +1,64 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { useGLTF } from "@react-three/drei";
-import { RigidBody } from "@react-three/rapier";
+
+import { CuboidCollider, RigidBody } from "@react-three/rapier";
+
+import * as THREE from "three";
 
 export default function EscapeCollision() {
-  const collision = useGLTF(
-    "/maps/escape/collision.glb",
-  );
+  const visual = useGLTF("/maps/escape/visual.glb");
+
+  const collision = useGLTF("/maps/escape/collision.glb");
+
+  // ========================================
+  // Visual Shadow Setup
+  // ========================================
+
+  useEffect(() => {
+    visual.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh || object instanceof THREE.SkinnedMesh) {
+        object.castShadow = true;
+
+        object.receiveShadow = true;
+      }
+    });
+  }, [visual.scene]);
 
   return (
-    <RigidBody
-      type="fixed"
-      colliders="trimesh"
-      includeInvisible
-    >
-      <primitive
-        object={collision.scene}
-        visible={true}
-      />
-    </RigidBody>
+    <>
+      {/* =================================
+                Visual Map
+            ================================= */}
+
+      <primitive object={visual.scene} />
+
+      {/* =================================
+                Collision Map
+            ================================= */}
+
+      <RigidBody type="fixed" colliders="trimesh" includeInvisible>
+        <primitive object={collision.scene} visible={false} />
+      </RigidBody>
+
+      {/* =================================
+    DEBUG FLOOR
+    เอาไว้ทดสอบ Zombie เท่านั้น
+================================= */}
+
+      {/* <RigidBody type="fixed" colliders={false}>
+        <CuboidCollider args={[80, 0.25, 3]} position={[60, 0, 0]} />
+      </RigidBody> */}
+    </>
   );
 }
 
-useGLTF.preload(
-  "/maps/escape/collision.glb",
-);
+// ========================================
+// Preload
+// ========================================
+
+useGLTF.preload("/maps/escape/visual.glb");
+
+useGLTF.preload("/maps/escape/collision.glb");

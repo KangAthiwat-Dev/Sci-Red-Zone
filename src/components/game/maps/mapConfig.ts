@@ -7,7 +7,7 @@ export const GAME_MAPS: MapDefinition[] = [
   {
     id: "faculty-hall",
     label: "Faculty Hall",
-    spawnPosition: [-13.5, 3, 0],
+    spawnPosition: [-13.5, 1, 0],
     enterTransition: {
       steps: [
         {
@@ -97,7 +97,7 @@ export const GAME_MAPS: MapDefinition[] = [
   {
     id: "escape",
     label: "Escape",
-    spawnPosition: [-9, 2, 0],
+    spawnPosition: [-9, 3, 0],
     enterTransition: {
       steps: [
         {

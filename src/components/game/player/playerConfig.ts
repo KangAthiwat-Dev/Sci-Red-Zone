@@ -64,16 +64,16 @@ export const REVERSE_BRAKE_ACCELERATION = 45;
 export const CAMERA_DISTANCE = 13;
 
 // ความสูงกล้องเหนือ Player
-export const CAMERA_HEIGHT = 3.5;
+export const CAMERA_HEIGHT = 4.5;
 
 // กล้องมองสูงกว่าจุดกลาง Player เล็กน้อย
-export const CAMERA_TARGET_HEIGHT = 3;
+export const CAMERA_TARGET_HEIGHT = 1;
 
 // มองล่วงหน้าตอนเดิน
-export const WALK_LOOK_AHEAD = 1.2;
+export const WALK_LOOK_AHEAD = 1.5;
 
 // มองล่วงหน้าเพิ่มตอนวิ่ง
-export const RUN_LOOK_AHEAD = 2;
+export const RUN_LOOK_AHEAD = 2.5;
 
 // ความเร็วในการตาม Player
 export const CAMERA_FOLLOW_SPEED = 4;
