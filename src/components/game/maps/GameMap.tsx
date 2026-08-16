@@ -1,6 +1,5 @@
 "use client";
 
-import GameBackground from "./GameBackground";
 import MapExitTrigger from "./MapExitTrigger";
 import HoldExitTrigger from "./HoldExitTrigger";
 import type {
@@ -9,7 +8,7 @@ import type {
 import FacultyHallCollision from "./faculty-hall/FacultyHallCollision";
 import StairwayCollision from "./stairway/StairwayCollision";
 import LaboratoryCollision from "./laboratory/LaboratoryCollision";
-import EscapeCollision from "./Escape/EscapeCollision";
+import EscapeCollision from "./escape/EscapeCollision";
 
 type GameMapProps = {
     map: MapDefinition;
@@ -31,12 +30,6 @@ export default function GameMap({
 }: GameMapProps) {
     return (
         <>
-            {/* <GameBackground
-                background={
-                    map.background
-                }
-            /> */}
-
             {/* ======================
                 Collision / Map
             ====================== */}
