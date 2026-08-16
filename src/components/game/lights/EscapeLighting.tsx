@@ -83,7 +83,7 @@ function CeilingLamp({
                     castShadow
                 }
                 shadowMapSize={
-                    1024
+                    512
                 }
                 flicker={
                     flicker
@@ -191,17 +191,16 @@ export default function EscapeLighting() {
             <CeilingLamp
                 x={13}
                 intensity={30}
-                castShadow
             />
             <CeilingLamp
                 x={22}
                 intensity={40}
-                castShadow
             />
 
             <CeilingLamp
                 x={30}
                 intensity={27}
+                castShadow
             />
 
             {/* =================================
@@ -221,7 +220,6 @@ export default function EscapeLighting() {
             <CeilingLamp
                 x={82}
                 intensity={22}
-                castShadow
             />
 
             <CeilingLamp

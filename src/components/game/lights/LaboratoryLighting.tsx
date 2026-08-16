@@ -76,7 +76,7 @@ function CeilingLamp({
                 castShadow={
                     castShadow
                 }
-                shadowMapSize={1024}
+                shadowMapSize={512}
                 flicker={
                     flicker
                 }
@@ -157,37 +157,31 @@ export default function LaboratoryLighting() {
             <CeilingLamp
                 x={19}
                 intensity={29}
-                castShadow
             />
 
             <CeilingLamp
                 x={36.5}
                 intensity={29}
-                castShadow
             />
 
             <CeilingLamp
                 x={58}
                 intensity={34}
-                castShadow
             />
 
             <CeilingLamp
                 x={79}
                 intensity={34}
-                castShadow
             />
 
             <CeilingLamp
                 x={99}
                 intensity={32}
-                castShadow
             />
 
             <CeilingLamp
                 x={124.5}
                 intensity={28}
-                castShadow
             />
 
             {/* =================================

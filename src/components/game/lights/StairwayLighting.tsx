@@ -81,7 +81,7 @@ function CeilingLamp({
                     castShadow
                 }
                 shadowMapSize={
-                    1024
+                    512
                 }
                 flicker={
                     flicker
@@ -173,7 +173,7 @@ export default function StairwayLighting() {
                 beamOpacity={0.045}
                 castShadow
                 shadowMapSize={
-                    1024
+                    512
                 }
             /> */}
 
@@ -220,7 +220,6 @@ export default function StairwayLighting() {
             <CeilingLamp
                 x={100}
                 intensity={24}
-                castShadow
             />
 
             {/* =================================

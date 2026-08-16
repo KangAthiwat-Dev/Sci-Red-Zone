@@ -70,7 +70,7 @@ function CeilingLamp({
                     castShadow
                 }
                 shadowMapSize={
-                    1024
+                    512
                 }
 
                 flicker={
@@ -158,7 +158,7 @@ export default function HallLighting() {
                 outerRadius={4.3}
                 beamOpacity={0.05}
                 castShadow
-                shadowMapSize={1024}
+                shadowMapSize={512}
             />
 
             {/* =================================
@@ -178,18 +178,11 @@ export default function HallLighting() {
                 intensity={20}
             />
 
-            {/* ช่วงนี้มี Shadow */}
-            {/* <CeilingLamp
-                x={25}
-                intensity={24}
-                castShadow
-            /> */}
-
             {/* ไฟเสีย */}
             <CeilingLamp
                 x={46}
                 intensity={27}
-                // flicker
+                flicker
             />
 
             {/* deliberately darker gap */}

@@ -304,7 +304,12 @@ export default function GameScene() {
   return (
     <div className="relative h-full w-full">
       <Canvas
-        shadows="soft"
+        shadows
+        dpr={1}
+        gl={{
+          antialias: false,
+          powerPreference: "high-performance",
+        }}
         camera={{
           position: [0, 4, 12],
           fov: 48,
@@ -497,10 +502,7 @@ export default function GameScene() {
                 />
               )}
 
-              {mapAssetsReady && currentMap.id === "faculty-hall" && (
-                <>
-                </>
-              )}
+              {mapAssetsReady && currentMap.id === "faculty-hall" && <></>}
 
               {mapAssetsReady && currentMap.id === "escape" && (
                 <>

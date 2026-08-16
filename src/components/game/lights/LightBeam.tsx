@@ -56,7 +56,7 @@ export default function LightBeam({
     beamOpacity = 0.07,
 
     castShadow = false,
-    shadowMapSize = 1024,
+    shadowMapSize = 512,
 
     flicker = false,
 }: LightBeamProps) {

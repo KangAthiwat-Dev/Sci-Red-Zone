@@ -76,6 +76,7 @@ export default function ZombieEnemy({
   const attackHitRef = useRef(false);
 
   const [direction, setDirection] = useState<1 | -1>(1);
+  const directionRef = useRef<1 | -1>(1);
 
   const [animation, setAnimation] = useState<ZombieAnimationState>(
     variant === "crawler" ? "crawl" : "walk",
@@ -86,6 +87,16 @@ export default function ZombieEnemy({
    * โดยเฉพาะ Attack ที่เล่นซ้ำ
    */
   const [animationKey, setAnimationKey] = useState(0);
+
+  function changeDirection(next: 1 | -1) {
+    if (directionRef.current === next) {
+      return;
+    }
+
+    directionRef.current = next;
+
+    setDirection(next);
+  }
 
   // ========================================
   // Animation Change
@@ -174,7 +185,7 @@ export default function ZombieEnemy({
 
       const nextDirection: 1 | -1 = deltaX >= 0 ? 1 : -1;
 
-      setDirection(nextDirection);
+      changeDirection(nextDirection);
 
       // =============================
       // ATTACK
@@ -287,7 +298,7 @@ export default function ZombieEnemy({
 
     const patrolDirection = patrolDirectionRef.current;
 
-    setDirection(patrolDirection);
+    changeDirection(patrolDirection);
 
     const patrolSpeed =
       variant === "crawler" ? ZOMBIE_CRAWL_SPEED : ZOMBIE_WALK_SPEED;
