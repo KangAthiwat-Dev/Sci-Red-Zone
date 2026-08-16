@@ -191,6 +191,10 @@ export default function StairwayLighting() {
                 x={100}
                 intensity={24}
             />
+            <CeilingLamp
+                x={112}
+                intensity={38}
+            />
 
             {/* =================================
                 Exit / Danger
@@ -198,10 +202,6 @@ export default function StairwayLighting() {
             <WallEmergencyLight
                 position={[82, 5, -2]}
                 rotation={[0, 0, 0]}
-            />
-            <WallEmergencyLight
-                position={[114.6, 5, 0]}
-                rotation={[0, -Math.PI / 2, 0]}
             />
         </>
     );

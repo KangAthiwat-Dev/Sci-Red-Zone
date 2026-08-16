@@ -11,7 +11,7 @@ export default function Home() {
                 bg-black
             "
         >
-            <GameScene />;
+            <GameFlow />
         </main>
     );
 }

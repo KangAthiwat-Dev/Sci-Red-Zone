@@ -203,12 +203,17 @@ export default function EscapeLighting() {
                 castShadow
             />
 
+            <CeilingLamp
+                x={44}
+                intensity={50}
+            />
+
             {/* =================================
                 Broken Light
             ================================= */}
 
             <CeilingLamp
-                x={52}
+                x={67}
                 intensity={34}
                 flicker
             />
@@ -218,69 +223,23 @@ export default function EscapeLighting() {
             ================================= */}
 
             <CeilingLamp
-                x={82}
+                x={90}
                 intensity={22}
             />
 
             <CeilingLamp
-                x={108}
-                intensity={26}
-            />
-
-            {/* =================================
-                Warm Accent
-            ================================= */}
-
-            <pointLight
-                position={[
-                    34,
-                    2.4,
-                    -1.3,
-                ]}
-                color="#a87345"
-                intensity={3.5}
-                distance={9}
-                decay={2}
-            />
-
-            {/* =================================
-                Cold Accent
-            ================================= */}
-
-            <pointLight
-                position={[
-                    92,
-                    3,
-                    -2,
-                ]}
-                color="#5f8eb8"
-                intensity={4}
-                distance={12}
-                decay={2}
+                x={113}
+                intensity={36}
             />
 
             {/* =================================
                 Exit / Danger
             ================================= */}
-
             <WallEmergencyLight
                 position={[
-                    118,
+                    117.7,
                     5,
-                    -2,
-                ]}
-                rotation={[
-                    0,
-                    0,
-                    0,
-                ]}
-            />
-
-            <WallEmergencyLight
-                position={[
-                    142,
-                    5,
-                    0,
+                    6,
                 ]}
                 rotation={[
                     0,

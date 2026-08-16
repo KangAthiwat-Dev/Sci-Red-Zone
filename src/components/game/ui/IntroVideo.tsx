@@ -91,7 +91,7 @@ export default function IntroVideo({
             className="
                 absolute
                 inset-0
-                z-[10000]
+                z-10000
                 flex
                 items-center
                 justify-center
@@ -100,7 +100,7 @@ export default function IntroVideo({
         >
             <video
                 ref={videoRef}
-                src="/videos/intro.mp4"
+                src="/videos/intro.MOV"
                 playsInline
                 preload="auto"
                 muted={false}

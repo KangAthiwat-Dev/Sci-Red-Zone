@@ -30,14 +30,16 @@ import StairwayDoorStatus from "./stairway/interactions/StairwayDoorStatus";
 import WirePanel from "./stairway/interactions/WirePanel";
 import KeycardPickup from "./stairway/interactions/KeycardPickup";
 import WirePuzzle from "./stairway/puzzles/WirePuzzle";
-import ObjectiveTracker from "./ui/ObjectiveTracker";
-import { getStairwayObjectiveQuest } from "./stairway/objective/stairwayObjectiveQuest";
 import LaboratoryLighting from "./lights/LaboratoryLighting";
 import SceneSetDressing from "./background/SceneSetDressing";
 import EscapeLighting from "./lights/EscapeLighting";
 import ZombieEnemy from "./enemies/zombie/ZombieEnemy";
 import MapAssetGate from "./loading/MapAssetGate";
 import { preloadEnemyAssets, preloadMapAssets } from "./loading/gameAssetCache";
+import EscapeEndingTrigger from "./escape/EscapeEndingTrigger";
+import EndingVideo from "./escape/EndingVideo";
+import GameHUD from "./ui/GameHUD";
+import GameLoadingScreen from "./ui/GameLoadingScreen";
 
 const MODEL_BOXWOOD_POSITION: [number, number, number] = [46, 1.65, -1.2];
 
@@ -85,7 +87,9 @@ export default function GameScene() {
 
   const [stairwayWirePuzzleOpen, setStairwayWirePuzzleOpen] = useState(false);
 
-  const stairwayObjective = getStairwayObjectiveQuest(stairwayProgress);
+  const [endingStarted, setEndingStarted] = useState(false);
+
+  const [endingVideoVisible, setEndingVideoVisible] = useState(false);
 
   const mapTransitionBusyRef = useRef(false);
 
@@ -301,6 +305,49 @@ export default function GameScene() {
     }
   }, [currentMapIndex]);
 
+  function startEndingSequence() {
+    /*
+     * กัน Trigger ซ้ำ
+     */
+    if (endingStarted) {
+      return;
+    }
+
+    if (currentMap.id !== "escape") {
+      return;
+    }
+
+    // ============================
+    // Lock Game
+    // ============================
+
+    setEndingStarted(true);
+
+    /*
+     * Fade จอดำก่อน
+     */
+    setMapFadeVisible(true);
+
+    // ============================
+    // Fade → Video
+    // ============================
+
+    window.setTimeout(() => {
+      /*
+       * ตอนนี้จอดำเต็มแล้ว
+       */
+      setEndingVideoVisible(true);
+
+      /*
+       * เอา Fade ออก
+       * เพื่อเผย Video
+       */
+      window.setTimeout(() => {
+        setMapFadeVisible(false);
+      }, 100);
+    }, 500);
+  }
+
   return (
     <div className="relative h-full w-full">
       <Canvas
@@ -393,6 +440,17 @@ export default function GameScene() {
                 />
               )}
 
+              {mapAssetsReady &&
+                currentMap.id === "escape" &&
+                currentMap.exit && (
+                  <EscapeEndingTrigger
+                    position={currentMap.exit.position}
+                    halfExtents={currentMap.exit.halfExtents}
+                    enabled={!endingStarted}
+                    onEnter={startEndingSequence}
+                  />
+                )}
+
               {/* Puzzles */}
               {currentMap.id === "laboratory" && (
                 <>
@@ -451,6 +509,7 @@ export default function GameScene() {
                   pushState={pushState}
                   spawnPosition={currentMap.spawnPosition}
                   controlsLocked={
+                    endingStarted ||
                     stairwayWirePuzzleOpen ||
                     activeLabPuzzle !== null ||
                     antidoteInteractionActive ||
@@ -525,12 +584,32 @@ export default function GameScene() {
         </Suspense>
       </Canvas>
 
-      {currentMap.id === "stairway" && (
-        <ObjectiveTracker
-          title={stairwayObjective.title}
-          description={stairwayObjective.description}
-        />
-      )}
+      <GameHUD
+        health={playerHealth}
+        maxHealth={100}
+        objectiveTitle="ESCAPE THE FACILITY"
+        objectiveHint="สำรวจพื้นที่ ค้นหาไอเทมสำคัญ และหาทางออก"
+        items={[
+          {
+            id: "keycard",
+            label: "Keycard",
+            shortLabel: "KC",
+            acquired: false,
+          },
+          {
+            id: "antidote",
+            label: "Antidote",
+            shortLabel: "MED",
+            acquired: false,
+          },
+          {
+            id: "sample",
+            label: "Sample",
+            shortLabel: "DNA",
+            acquired: false,
+          },
+        ]}
+      />
 
       {stairwayWirePuzzleOpen && (
         <WirePuzzle
@@ -629,67 +708,19 @@ export default function GameScene() {
         visible={currentMap.id === "escape" && escapePhase === "alarm"}
       />
 
-      <MapFadeOverlay visible={mapFadeVisible || !mapAssetsReady} />
+      <MapFadeOverlay visible={mapFadeVisible} />
 
-      <div className="pointer-events-none absolute left-4 top-4 rounded-xl bg-black/70 px-4 py-3 text-sm leading-6 text-white">
-        A / D = เดิน
-        <br />
-        Shift + A / D = วิ่ง
-        <br />
-        Space = กระโดด
-        <br />
-        C / Ctrl = กดเพื่อย่อ
-        <br />E = ดัน Printer
-      </div>
+      <GameLoadingScreen
+        visible={!mapAssetsReady && !endingVideoVisible}
+        mapLabel={currentMap.label}
+      />
 
-      {currentMap.id === "escape" && (
-        <div
-          className="
-            pointer-events-none
-            absolute
-            right-6
-            top-6
-            z-7000
-            w-64
-        "
-        >
-          <div
-            className="
-                mb-2
-                flex
-                justify-between
-                text-sm
-                font-bold
-                text-white
-            "
-          >
-            <span>HEALTH</span>
-
-            <span>{playerHealth}</span>
-          </div>
-
-          <div
-            className="
-                h-3
-                overflow-hidden
-                rounded-full
-                bg-black/60
-            "
-          >
-            <div
-              className="
-                    h-full
-                    bg-red-500
-                    transition-all
-                    duration-200
-                "
-              style={{
-                width: `${playerHealth}%`,
-              }}
-            />
-          </div>
-        </div>
-      )}
+      <EndingVideo
+        visible={endingVideoVisible}
+        onEnded={() => {
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
