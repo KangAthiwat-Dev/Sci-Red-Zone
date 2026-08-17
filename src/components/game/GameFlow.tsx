@@ -1,57 +1,41 @@
 "use client";
 
-import {
-    useState,
-} from "react";
+import { useState } from "react";
 
 import GameScene from "./GameScene";
 
 import MainMenu from "./ui/MainMenu";
 import IntroVideo from "./ui/IntroVideo";
 
-type GamePhase =
-    | "menu"
-    | "intro"
-    | "game";
+type GamePhase = "menu" | "intro" | "game";
 
 export default function GameFlow() {
-    const [
-        phase,
-        setPhase,
-    ] = useState<GamePhase>(
-        "menu",
-    );
+  const [phase, setPhase] = useState<GamePhase>("menu");
 
-    const [
-        introReady,
-        setIntroReady,
-    ] = useState(false);
+  const [introReady, setIntroReady] = useState(false);
 
-    return (
-        <>
-            {/* =========================
+  return (
+    <>
+      {/* =========================
                 MAIN MENU
             ========================= */}
 
-            {phase === "menu" && (
-                <MainMenu
-                    onStart={() => {
-                        /*
-                         * กันไว้ชั้นหนึ่ง
-                         * Intro ยังไม่พร้อมห้ามเข้า
-                         */
-                        if (!introReady) {
-                            return;
-                        }
+      {phase === "menu" && (
+        <MainMenu
+          onStart={() => {
+            /*
+             * ไม่ Block การเข้า Intro
+             *
+             * ถ้า Video ยังโหลดอยู่
+             * IntroVideo จะเป็นคนแสดง
+             * LOADING VIDEO... เอง
+             */
+            setPhase("intro");
+          }}
+        />
+      )}
 
-                        setPhase(
-                            "intro",
-                        );
-                    }}
-                />
-            )}
-
-            {/* =========================
+      {/* =========================
                 INTRO VIDEO
 
                 สำคัญ:
@@ -59,46 +43,39 @@ export default function GameFlow() {
                 เพื่อให้ preload
             ========================= */}
 
-            {phase !== "game" && (
-                <IntroVideo
-                    active={
-                        phase === "intro"
-                    }
-                    onReady={() => {
-                        setIntroReady(
-                            true,
-                        );
-                    }}
-                    onComplete={() => {
-                        setPhase(
-                            "game",
-                        );
-                    }}
-                />
-            )}
+      {phase !== "game" && (
+        <IntroVideo
+          active={phase === "intro"}
+          onReady={() => {
+            setIntroReady(true);
+          }}
+          onComplete={() => {
+            setPhase("game");
+          }}
+        />
+      )}
 
-            {/* =========================
+      {/* =========================
                 BLOCK MENU
                 จน Intro พร้อม
             ========================= */}
 
-            {phase === "menu" &&
-                !introReady && (
-                    <div
-                        className="
+      {phase === "menu" && !introReady && (
+        <div
+          className="
+                            pointer-events-none
                             fixed
                             inset-0
-                            z-[20000]
+                            z-20000
                             flex
                             items-end
                             justify-center
-                            bg-black/20
+                            bg-black/10
                             pb-10
-                            backdrop-blur-[1px]
                         "
-                    >
-                        <div
-                            className="
+        >
+          <div
+            className="
                                 flex
                                 items-center
                                 gap-3
@@ -113,9 +90,9 @@ export default function GameFlow() {
                                 text-white/70
                                 backdrop-blur-md
                             "
-                        >
-                            <div
-                                className="
+          >
+            <div
+              className="
                                     h-4
                                     w-4
                                     animate-spin
@@ -124,20 +101,17 @@ export default function GameFlow() {
                                     border-white/20
                                     border-t-white
                                 "
-                            />
+            />
+            PREPARING INTRO...
+          </div>
+        </div>
+      )}
 
-                            PREPARING INTRO...
-                        </div>
-                    </div>
-                )}
-
-            {/* =========================
+      {/* =========================
                 GAME
             ========================= */}
 
-            {phase === "game" && (
-                <GameScene />
-            )}
-        </>
-    );
+      {phase === "game" && <GameScene />}
+    </>
+  );
 }

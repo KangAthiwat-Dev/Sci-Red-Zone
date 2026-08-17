@@ -117,12 +117,12 @@ export default function StairwayLighting() {
             ================================= */}
 
             <ambientLight
-                intensity={0.32}
+                intensity={0.38}
                 color="#80796f"
             />
 
             <hemisphereLight
-                intensity={0.13}
+                intensity={0.33}
                 color="#a59782"
                 groundColor="#070809"
             />
@@ -139,6 +139,11 @@ export default function StairwayLighting() {
 
             <CeilingLamp
                 x={-5.5}
+                intensity={34}
+            />
+
+            <CeilingLamp
+                x={10}
                 intensity={34}
             />
 

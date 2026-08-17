@@ -3,7 +3,7 @@
 // ========================================
 
 export const ZOMBIE_MODEL_URL =
-    "/models/enemies/zombie.glb";
+    "/models/enemies/zombie-optimized.glb";
 
 export const ZOMBIE_MODEL_SCALE =
     1.6;

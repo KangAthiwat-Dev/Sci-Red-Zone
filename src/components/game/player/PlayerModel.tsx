@@ -570,7 +570,7 @@ export default function PlayerModel({
         scene,
         animations,
     } = useGLTF(
-        "/player/student.glb",
+        "/player/student-optimized.glb",
     );
 
     // ========================================
@@ -1302,5 +1302,5 @@ export default function PlayerModel({
 }
 
 useGLTF.preload(
-    "/player/student.glb",
+    "/player/student-optimized.glb",
 );

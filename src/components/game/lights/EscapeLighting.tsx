@@ -130,7 +130,7 @@ export default function EscapeLighting() {
             />
 
             <hemisphereLight
-                intensity={0.28}
+                intensity={0.33}
                 color="#a59782"
                 groundColor="#070809"
             />

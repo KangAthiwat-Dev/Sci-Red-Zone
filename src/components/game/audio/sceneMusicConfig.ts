@@ -29,7 +29,7 @@ export const SCENE_MUSIC: Record<
     },
 
     stairway: {
-        src: "/sounds/music/stairway.mp3",
+        src: "/sounds/music/stairway-web.mp3",
 
         volume: 0.4,
 
@@ -39,7 +39,7 @@ export const SCENE_MUSIC: Record<
     },
 
     laboratory: {
-        src: "/sounds/music/laboratory.mp3",
+        src: "/sounds/music/laboratory-web.mp3",
 
         volume: 0.45,
 
@@ -49,7 +49,7 @@ export const SCENE_MUSIC: Record<
     },
 
     escape: {
-        src: "/sounds/music/escape.mp3",
+        src: "/sounds/music/escape-web.mp3",
 
         volume: 0.55,
 

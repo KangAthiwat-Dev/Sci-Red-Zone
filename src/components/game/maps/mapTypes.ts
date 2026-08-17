@@ -16,16 +16,6 @@ export type MapDefinition = {
 
   spawnPosition: Vector3Tuple;
 
-  background: {
-    url?: string;
-
-    position: Vector3Tuple;
-
-    size: [number, number];
-
-    fallbackColor: string;
-  };
-
   enterTransition?: {
     steps: MapTransitionStep[];
   };

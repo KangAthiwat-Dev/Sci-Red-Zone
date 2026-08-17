@@ -1,191 +1,179 @@
 "use client";
 
-import {
-    useCallback,
-    useEffect,
-    useRef,
-    useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type IntroVideoProps = {
-    active: boolean;
+  active: boolean;
 
-    onReady: () => void;
+  onReady: () => void;
 
-    onComplete: () => void;
+  onComplete: () => void;
 };
 
 export default function IntroVideo({
-    active,
-    onReady,
-    onComplete,
+  active,
+  onReady,
+  onComplete,
 }: IntroVideoProps) {
-    const videoRef =
-        useRef<HTMLVideoElement>(
-            null,
-        );
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-    const readyReportedRef =
-        useRef(false);
+  const readyReportedRef = useRef(false);
 
-    const [
-        needsInteraction,
-        setNeedsInteraction,
-    ] = useState(false);
+  const [needsInteraction, setNeedsInteraction] = useState(false);
 
-    const [
-        buffering,
-        setBuffering,
-    ] = useState(false);
+  const [buffering, setBuffering] = useState(false);
 
-    // ========================================
-    // Play
-    // ========================================
+  // ========================================
+  // Report Ready
+  // ========================================
 
-    const playVideo =
-        useCallback(async () => {
-            if (!active) {
-                return;
-            }
-
-            const video =
-                videoRef.current;
-
-            if (!video) {
-                return;
-            }
-
-            /*
-             * ยังโหลดไม่พอ
-             */
-            if (
-                video.readyState < 3
-            ) {
-                setBuffering(
-                    true,
-                );
-
-                return;
-            }
-
-            video.muted = false;
-
-            video.volume = 1;
-
-            try {
-                await video.play();
-
-                setBuffering(
-                    false,
-                );
-
-                setNeedsInteraction(
-                    false,
-                );
-            } catch {
-                /*
-                 * Browser block autoplay
-                 * ที่มีเสียง
-                 */
-                setNeedsInteraction(
-                    true,
-                );
-            }
-        }, [
-            active,
-        ]);
-
-    // ========================================
-    // เริ่ม Intro เมื่อ phase เปลี่ยน
-    // ========================================
-
-    useEffect(() => {
-        if (!active) {
-            return;
-        }
-
-        const video =
-            videoRef.current;
-
-        if (!video) {
-            return;
-        }
-
-        video.currentTime = 0;
-
-        void playVideo();
-    }, [
-        active,
-        playVideo,
-    ]);
-
-    // ========================================
-    // Video พร้อม
-    // ========================================
-
-    function handleCanPlay() {
-        setBuffering(
-            false,
-        );
-
-        /*
-         * แจ้ง GameFlow แค่ครั้งเดียว
-         */
-        if (
-            !readyReportedRef.current
-        ) {
-            readyReportedRef.current =
-                true;
-
-            onReady();
-        }
-
-        /*
-         * ถ้าเข้าหน้า Intro แล้ว
-         * เล่นทันที
-         */
-        if (active) {
-            void playVideo();
-        }
+  const reportReady = useCallback(() => {
+    /*
+     * แจ้ง GameFlow แค่ครั้งเดียว
+     */
+    if (readyReportedRef.current) {
+      return;
     }
 
-    // ========================================
-    // Browser ขอ Interaction
-    // ========================================
+    readyReportedRef.current = true;
 
-    async function handlePlayIntro() {
-        const video =
-            videoRef.current;
+    onReady();
+  }, [onReady]);
 
-        if (!video) {
-            return;
-        }
+  // ========================================
+  // Check Cached Video Ready State
+  // ========================================
 
-        video.muted = false;
+  useEffect(() => {
+    const video = videoRef.current;
 
-        video.volume = 1;
-
-        try {
-            await video.play();
-
-            setNeedsInteraction(
-                false,
-            );
-
-            setBuffering(
-                false,
-            );
-        } catch (error) {
-            console.error(
-                "Intro video play failed:",
-                error,
-            );
-        }
+    if (!video) {
+      return;
     }
 
-    return (
-        <div
-            className={`
+    /*
+     * HAVE_CURRENT_DATA = 2
+     *
+     * มีข้อมูล frame แรกแล้ว
+     * ถือว่า Intro ถูกโหลดสำเร็จ
+     *
+     * ไม่ต้องบังคับรอ canplay อย่างเดียว
+     */
+    if (video.readyState >= 2) {
+      reportReady();
+    }
+  }, [reportReady]);
+
+  // ========================================
+  // Play
+  // ========================================
+
+  const playVideo = useCallback(async () => {
+    if (!active) {
+      return;
+    }
+
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    /*
+     * ยังโหลดไม่พอ
+     */
+    if (video.readyState < 3) {
+      setBuffering(true);
+
+      return;
+    }
+
+    video.muted = false;
+
+    video.volume = 1;
+
+    try {
+      await video.play();
+
+      setBuffering(false);
+
+      setNeedsInteraction(false);
+    } catch {
+      /*
+       * Browser block autoplay
+       * ที่มีเสียง
+       */
+      setNeedsInteraction(true);
+    }
+  }, [active]);
+
+  // ========================================
+  // เริ่ม Intro เมื่อ phase เปลี่ยน
+  // ========================================
+
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    video.currentTime = 0;
+
+    void playVideo();
+  }, [active, playVideo]);
+
+  // ========================================
+  // Video พร้อม
+  // ========================================
+
+  function handleCanPlay() {
+    setBuffering(false);
+
+    reportReady();
+
+    /*
+     * ถ้าเข้าหน้า Intro แล้ว
+     * เล่นทันที
+     */
+    if (active) {
+      void playVideo();
+    }
+  }
+
+  // ========================================
+  // Browser ขอ Interaction
+  // ========================================
+
+  async function handlePlayIntro() {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    video.muted = false;
+
+    video.volume = 1;
+
+    try {
+      await video.play();
+
+      setNeedsInteraction(false);
+
+      setBuffering(false);
+    } catch (error) {
+      console.error("Intro video play failed:", error);
+    }
+  }
+
+  return (
+    <div
+      className={`
                 fixed
                 inset-0
                 z-[10000]
@@ -197,59 +185,62 @@ export default function IntroVideo({
                 duration-300
 
                 ${
-                    active
-                        ? "pointer-events-auto opacity-100"
-                        : "pointer-events-none opacity-0"
+                  active
+                    ? "pointer-events-auto opacity-100"
+                    : "pointer-events-none opacity-0"
                 }
             `}
-        >
-            <video
-                ref={videoRef}
+    >
+      <video
+        ref={videoRef}
+        src="/videos/intro-web.mp4"
+        playsInline
+        preload="auto"
+        onLoadedData={() => {
+          /*
+           * โหลด frame แรกได้แล้ว
+           * ถือว่า preload สำเร็จ
+           */
+          reportReady();
+        }}
+        onCanPlay={handleCanPlay}
+        onError={() => {
+          const video = videoRef.current;
 
-                src="/videos/intro.MOV"
+          console.error("Intro video load failed:", video?.error);
 
-                playsInline
+          setBuffering(false);
 
-                preload="auto"
-
-                onCanPlay={
-                    handleCanPlay
-                }
-
-                onWaiting={() => {
-                    if (active) {
-                        setBuffering(
-                            true,
-                        );
-                    }
-                }}
-
-                onPlaying={() => {
-                    setBuffering(
-                        false,
-                    );
-                }}
-
-                onEnded={
-                    onComplete
-                }
-
-                className="
+          /*
+           * อย่าให้ Menu ติด Preparing
+           * ตลอดไปถ้า Video โหลดเสีย
+           */
+          reportReady();
+        }}
+        onWaiting={() => {
+          if (active) {
+            setBuffering(true);
+          }
+        }}
+        onPlaying={() => {
+          setBuffering(false);
+        }}
+        onEnded={onComplete}
+        className="
                     h-full
                     w-full
                     bg-black
                     object-contain
                 "
-            />
+      />
 
-            {/* ======================
+      {/* ======================
                 Buffering
             ====================== */}
 
-            {active &&
-                buffering && (
-                    <div
-                        className="
+      {active && buffering && (
+        <div
+          className="
                             absolute
                             inset-0
                             flex
@@ -257,17 +248,17 @@ export default function IntroVideo({
                             justify-center
                             bg-black
                         "
-                    >
-                        <div
-                            className="
+        >
+          <div
+            className="
                                 flex
                                 flex-col
                                 items-center
                                 gap-4
                             "
-                        >
-                            <div
-                                className="
+          >
+            <div
+              className="
                                     h-8
                                     w-8
                                     animate-spin
@@ -276,33 +267,30 @@ export default function IntroVideo({
                                     border-white/20
                                     border-t-white
                                 "
-                            />
+            />
 
-                            <div
-                                className="
+            <div
+              className="
                                     text-xs
                                     tracking-[0.25em]
                                     text-white/50
                                 "
-                            >
-                                LOADING VIDEO...
-                            </div>
-                        </div>
-                    </div>
-                )}
+            >
+              LOADING VIDEO...
+            </div>
+          </div>
+        </div>
+      )}
 
-            {/* ======================
+      {/* ======================
                 Browser Block Sound
             ====================== */}
 
-            {active &&
-                needsInteraction && (
-                    <button
-                        type="button"
-                        onClick={
-                            handlePlayIntro
-                        }
-                        className="
+      {active && needsInteraction && (
+        <button
+          type="button"
+          onClick={handlePlayIntro}
+          className="
                             absolute
                             left-1/2
                             top-1/2
@@ -319,22 +307,20 @@ export default function IntroVideo({
                             text-white
                             backdrop-blur-sm
                         "
-                    >
-                        PLAY INTRO
-                    </button>
-                )}
+        >
+          PLAY INTRO
+        </button>
+      )}
 
-            {/* ======================
+      {/* ======================
                 Skip
             ====================== */}
 
-            {active && (
-                <button
-                    type="button"
-                    onClick={
-                        onComplete
-                    }
-                    className="
+      {active && (
+        <button
+          type="button"
+          onClick={onComplete}
+          className="
                         absolute
                         bottom-8
                         right-8
@@ -352,10 +338,10 @@ export default function IntroVideo({
                         hover:border-white/50
                         hover:text-white
                     "
-                >
-                    SKIP
-                </button>
-            )}
-        </div>
-    );
+        >
+          SKIP
+        </button>
+      )}
+    </div>
+  );
 }

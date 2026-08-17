@@ -179,7 +179,7 @@ export default function EndingVideo({
             <video
                 ref={videoRef}
 
-                src="/videos/ending.MOV"
+                src="/videos/ending-web.mp4"
 
                 playsInline
 
