@@ -2,207 +2,145 @@
 
 import LightBeam from "./LightBeam";
 import HangingLamp from "../objects/HangingLamp";
+
 import {
-    BUILDING_CEILING_Y,
-    HANGING_LAMP_OFFSET_Y,
-    CEILING_LIGHT_Z,
-    DEFAULT_LIGHT_TARGET_Y,
+  BUILDING_CEILING_Y,
+  HANGING_LAMP_OFFSET_Y,
+  CEILING_LIGHT_Z,
+  DEFAULT_LIGHT_TARGET_Y,
 } from "./lightingConfig";
+
 import WallEmergencyLight from "../objects/WallEmergencyLight";
 
 // ========================================
 // Ceiling Lamp
+// LOW SPEC
 // ========================================
 
 type CeilingLampProps = {
-    x: number;
+  x: number;
 
-    intensity?: number;
+  intensity?: number;
 
-    flicker?: boolean;
-
-    castShadow?: boolean;
+  showBeam?: boolean;
 };
 
 function CeilingLamp({
-    x,
-    intensity = 100,
-    flicker = false,
-    castShadow = false,
+  x,
+  intensity = 18,
+  showBeam = false,
 }: CeilingLampProps) {
-    const lampY = BUILDING_CEILING_Y;
+  const lampY = BUILDING_CEILING_Y;
 
-    return (
-        <>
-            {/* =================================
-                แสงลงพื้น
-                ================================= */}
-            <HangingLamp
-                position={[x, lampY +
-                    HANGING_LAMP_OFFSET_Y,
-                    CEILING_LIGHT_Z,]}
-            />
-            <LightBeam
-                position={[
-                    x,
-                    lampY - 0.05,
-                    CEILING_LIGHT_Z,
-                ]}
-                target={[
-                    x,
-                    DEFAULT_LIGHT_TARGET_Y,
-                    0,
-                ]}
-                color="#c6dcff"
-                intensity={
-                    intensity
-                }
-                distance={25}
-                angle={0.48}
-                penumbra={0.92}
-                outerRadius={2.4}
+  return (
+    <>
+      {/* =========================
+                Lamp Model
+            ========================= */}
 
-                beamOpacity={
-                    0.04
-                }
+      <HangingLamp
+        position={[x, lampY + HANGING_LAMP_OFFSET_Y, CEILING_LIGHT_Z]}
+      />
 
-                castShadow={
-                    castShadow
-                }
-                shadowMapSize={
-                    512
-                }
+      {/* =========================
+                Beam
 
-                flicker={
-                    flicker
-                }
-            />
-        </>
-    );
+                Low spec:
+                เปิดเฉพาะบางดวง
+            ========================= */}
+
+      {showBeam && (
+        <LightBeam
+          position={[x, lampY - 0.05, CEILING_LIGHT_Z]}
+          target={[x, DEFAULT_LIGHT_TARGET_Y, 0]}
+          color="#c6dcff"
+          intensity={15}
+          distance={14}
+          angle={0.48}
+          penumbra={1}
+          outerRadius={2.8}
+          beamOpacity={0.045}
+          castShadow={false}
+          shadowMapSize={128}
+          flicker={false}
+        />
+      )}
+    </>
+  );
 }
 
 // ========================================
 // Hall Lighting
+// LOW SPEC
 // ========================================
 
 export default function HallLighting() {
-    return (
-        <>
-            {/* =================================
-                Environment
-            ================================= */}
+  return (
+    <>
+      {/* =========================
+                Background
+            ========================= */}
 
-            <color
-                attach="background"
-                args={[
-                    "#06080d",
-                ]}
-            />
+      <color attach="background" args={["#06080d"]} />
 
-            <fog
-                attach="fog"
-                args={["#0a0d14", 7, 28]}
-            />
+      {/* =========================
+                Fog
 
-            {/* =================================
-                Base Fill
+                เก็บไว้ได้
+                ไม่ใช่ตัวหนักหลัก
+            ========================= */}
 
-                จงใจต่ำ
-                เพื่อให้มีพื้นที่มืดจริง
-            ================================= */}
+      <fog attach="fog" args={["#0a0d14", 8, 26]} />
 
-            <ambientLight
-                intensity={0.88}
-                color="#788ba6"
-            />
+      {/* =========================
+                Base Lighting
+            ========================= */}
 
-            <hemisphereLight
-                intensity={0.14}
-                color="#9bb4d1"
-                groundColor="#080b10"
-            />
+      <ambientLight intensity={0.32} color="#788ba6" />
 
-            {/* =================================
-                Moon / Cold General Fill
+      <hemisphereLight intensity={0.62} color="#9bb4d1" groundColor="#080b10" />
 
-                ไม่ cast shadow
-                ให้เป็นแค่แสงเสริม
-            ================================= */}
+      {/* =========================
+                General Direction Light
 
-            <directionalLight
-                position={[
-                    -12,
-                    12,
-                    -8,
-                ]}
-                color="#7895bd"
-                intensity={0.28}
-            />
+                ไม่มี Shadow
+            ========================= */}
 
-            {/* =================================
-                WINDOW / GOD RAYS
+      <directionalLight
+        position={[-12, 12, -8]}
+        color="#7895bd"
+        intensity={0.22}
+        castShadow={false}
+      />
 
-                แสงจาก background wall
-                เฉียงลงมาหา Player lane
-            ================================= */}
+      {/* =========================
+                Ceiling Lamps
 
-            {/* Window Beam #1 */}
-            <LightBeam
-                position={[18, 7.1, -3.0]}
-                target={[24.5, 0.05, 0.8]}
-                color="#cfe1ff"
-                intensity={68}
-                distance={22}
-                angle={0.4}
-                penumbra={1}
-                outerRadius={4.3}
-                beamOpacity={0.05}
-                castShadow
-                shadowMapSize={512}
-            />
+                เดิมมี Beam หลายดวง
+                ตอนนี้ให้ Model อยู่
+                แต่เปิด Beam แค่บางดวง
+            ========================= */}
 
-            {/* =================================
-                CEILING LIGHTS
+      <CeilingLamp x={-10} showBeam intensity={15} />
 
-                เว้นบางช่วงไว้ให้มืด
-                จะดู cinematic กว่าเปิดทุกเมตร
-            ================================= */}
+      <CeilingLamp x={6} showBeam intensity={15} />
 
-            <CeilingLamp
-                x={-10}
-                intensity={23}
-            />
+      <CeilingLamp x={25} showBeam intensity={15} />
 
-            <CeilingLamp
-                x={6}
-                intensity={20}
-            />
+      <CeilingLamp x={46} showBeam intensity={14} />
 
-            {/* ไฟเสีย */}
-            <CeilingLamp
-                x={46}
-                intensity={27}
-            />
+      <CeilingLamp x={60} showBeam intensity={14} />
 
-            {/* deliberately darker gap */}
+      <CeilingLamp x={70} intensity={14} />
 
-            <CeilingLamp
-                x={60}
-                intensity={18}
-            />
+      {/* =========================
+                Emergency Light
+            ========================= */}
 
-            <CeilingLamp
-                x={70}
-                intensity={16}
-            />
-
-            {/* =================================
-                Exit / danger
-            ================================= */}
-            <WallEmergencyLight
-                position={[84, 4, -2.3]}
-                rotation={[0, -Math.PI / 2, 0]}
-            />
-        </>
-    );
+      <WallEmergencyLight
+        position={[84, 4, -2.3]}
+        rotation={[0, -Math.PI / 2, 0]}
+      />
+    </>
+  );
 }

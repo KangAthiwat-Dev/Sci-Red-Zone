@@ -456,11 +456,13 @@ export default function GameScene() {
       <SceneMusic mapId={currentMap.id} masterVolume={0.7} />
 
       <Canvas
-        shadows
-        dpr={1}
+        shadows={false}
+        dpr={0.75}
         gl={{
           antialias: false,
           powerPreference: "high-performance",
+          alpha: false,
+          stencil: false,
         }}
         camera={{
           position: [0, 4, 12],

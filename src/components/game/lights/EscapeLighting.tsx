@@ -125,7 +125,7 @@ export default function EscapeLighting() {
             ================================= */}
 
             <ambientLight
-                intensity={0.28}
+                intensity={0.38}
                 color="#66798a"
             />
 
@@ -148,34 +148,6 @@ export default function EscapeLighting() {
                 color="#7696b5"
                 intensity={0.26}
             />
-
-            {/* =================================
-                Moon / Exterior Beam
-            ================================= */}
-
-            {/* <LightBeam
-                position={[
-                    18,
-                    10,
-                    -4,
-                ]}
-                target={[
-                    24,
-                    DEFAULT_LIGHT_TARGET_Y,
-                    0,
-                ]}
-                color="#a8c7e8"
-                intensity={54}
-                distance={28}
-                angle={0.42}
-                penumbra={1}
-                outerRadius={4.5}
-                beamOpacity={0.035}
-                castShadow
-                shadowMapSize={
-                    1024
-                }
-            /> */}
 
             {/* =================================
                 CEILING / PATH LIGHTS
