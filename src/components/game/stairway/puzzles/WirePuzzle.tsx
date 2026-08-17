@@ -1,20 +1,13 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import PhysicsWire, {
-  type WirePoint,
-} from "./PhysicsWire";
+type WirePoint = {
+  x: number;
+  y: number;
+};
 
-type WireColor =
-  | "red"
-  | "blue"
-  | "yellow";
+type WireColor = "red" | "blue" | "yellow";
 
 type WirePuzzleProps = {
   onComplete: () => void;
@@ -54,17 +47,9 @@ const WIRES: WireDefinition[] = [
 /*
  * Socket จงใจสลับลำดับ
  */
-const SOCKETS: WireColor[] = [
-  "blue",
-  "yellow",
-  "red",
-];
+const SOCKETS: WireColor[] = ["blue", "yellow", "red"];
 
-type AnchorMap =
-  Record<
-    WireColor,
-    WirePoint | null
-  >;
+type AnchorMap = Record<WireColor, WirePoint | null>;
 
 const EMPTY_ANCHORS: AnchorMap = {
   red: null,
@@ -72,245 +57,121 @@ const EMPTY_ANCHORS: AnchorMap = {
   yellow: null,
 };
 
-export default function WirePuzzle({
-  onComplete,
-  onClose,
-}: WirePuzzleProps) {
-  const panelRef =
-    useRef<HTMLDivElement | null>(
-      null,
-    );
+export default function WirePuzzle({ onComplete, onClose }: WirePuzzleProps) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
-  const wireAnchorRefs =
-    useRef<
-      Partial<
-        Record<
-          WireColor,
-          HTMLDivElement | null
-        >
-      >
-    >({});
+  const wireAnchorRefs = useRef<
+    Partial<Record<WireColor, HTMLDivElement | null>>
+  >({});
 
-  const socketAnchorRefs =
-    useRef<
-      Partial<
-        Record<
-          WireColor,
-          HTMLDivElement | null
-        >
-      >
-    >({});
+  const socketAnchorRefs = useRef<
+    Partial<Record<WireColor, HTMLDivElement | null>>
+  >({});
 
-  const socketDropRefs =
-    useRef<
-      Partial<
-        Record<
-          WireColor,
-          HTMLDivElement | null
-        >
-      >
-    >({});
+  const socketDropRefs = useRef<
+    Partial<Record<WireColor, HTMLDivElement | null>>
+  >({});
 
-  const [
-    connected,
-    setConnected,
-  ] = useState<Set<WireColor>>(
-    () =>
-      new Set<WireColor>(),
+  const [connected, setConnected] = useState<Set<WireColor>>(
+    () => new Set<WireColor>(),
   );
 
-  const [
-    draggingWire,
-    setDraggingWire,
-  ] =
-    useState<WireColor | null>(
-      null,
-    );
+  const [draggingWire, setDraggingWire] = useState<WireColor | null>(null);
 
-  const [
-    cursorPoint,
-    setCursorPoint,
-  ] =
-    useState<WirePoint | null>(
-      null,
-    );
+  const [cursorPoint, setCursorPoint] = useState<WirePoint | null>(null);
 
-  const [
-    wireAnchors,
-    setWireAnchors,
-  ] =
-    useState<AnchorMap>(
-      EMPTY_ANCHORS,
-    );
+  const [wireAnchors, setWireAnchors] = useState<AnchorMap>(EMPTY_ANCHORS);
 
-  const [
-    socketAnchors,
-    setSocketAnchors,
-  ] =
-    useState<AnchorMap>(
-      EMPTY_ANCHORS,
-    );
+  const [socketAnchors, setSocketAnchors] = useState<AnchorMap>(EMPTY_ANCHORS);
 
-  const [
-    message,
-    setMessage,
-  ] = useState(
-    "ลากสายไฟไปเสียบเข้าช่องสีเดียวกัน",
-  );
+  const [message, setMessage] = useState("ลากสายไฟไปเสียบเข้าช่องสีเดียวกัน");
 
   // ==============================
   // Coordinate Helpers
   // ==============================
 
-  const getLocalPoint =
-    useCallback(
-      (
-        clientX: number,
-        clientY: number,
-      ): WirePoint => {
-        const panel =
-          panelRef.current;
+  const getLocalPoint = useCallback(
+    (clientX: number, clientY: number): WirePoint => {
+      const panel = panelRef.current;
 
-        if (!panel) {
-          return {
-            x: 0,
-            y: 0,
-          };
-        }
-
-        const rect =
-          panel.getBoundingClientRect();
-
+      if (!panel) {
         return {
-          x:
-            clientX -
-            rect.left,
-          y:
-            clientY -
-            rect.top,
+          x: 0,
+          y: 0,
         };
-      },
-      [],
-    );
+      }
 
-  const getElementCenter =
-    useCallback(
-      (
-        element:
-          | HTMLElement
-          | null
-          | undefined,
-      ): WirePoint | null => {
-        const panel =
-          panelRef.current;
+      const rect = panel.getBoundingClientRect();
 
-        if (
-          !panel ||
-          !element
-        ) {
-          return null;
-        }
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      };
+    },
+    [],
+  );
 
-        const panelRect =
-          panel.getBoundingClientRect();
+  const getElementCenter = useCallback(
+    (element: HTMLElement | null | undefined): WirePoint | null => {
+      const panel = panelRef.current;
 
-        const elementRect =
-          element.getBoundingClientRect();
+      if (!panel || !element) {
+        return null;
+      }
 
-        return {
-          x:
-            elementRect.left -
-            panelRect.left +
-            elementRect.width / 2,
+      const panelRect = panel.getBoundingClientRect();
 
-          y:
-            elementRect.top -
-            panelRect.top +
-            elementRect.height / 2,
-        };
-      },
-      [],
-    );
+      const elementRect = element.getBoundingClientRect();
+
+      return {
+        x: elementRect.left - panelRect.left + elementRect.width / 2,
+
+        y: elementRect.top - panelRect.top + elementRect.height / 2,
+      };
+    },
+    [],
+  );
 
   // ==============================
   // Update Anchor Positions
   // ==============================
 
-  const refreshAnchors =
-    useCallback(() => {
-      setWireAnchors({
-        red:
-          getElementCenter(
-            wireAnchorRefs
-              .current.red,
-          ),
+  const refreshAnchors = useCallback(() => {
+    setWireAnchors({
+      red: getElementCenter(wireAnchorRefs.current.red),
 
-        blue:
-          getElementCenter(
-            wireAnchorRefs
-              .current.blue,
-          ),
+      blue: getElementCenter(wireAnchorRefs.current.blue),
 
-        yellow:
-          getElementCenter(
-            wireAnchorRefs
-              .current.yellow,
-          ),
-      });
+      yellow: getElementCenter(wireAnchorRefs.current.yellow),
+    });
 
-      setSocketAnchors({
-        red:
-          getElementCenter(
-            socketAnchorRefs
-              .current.red,
-          ),
+    setSocketAnchors({
+      red: getElementCenter(socketAnchorRefs.current.red),
 
-        blue:
-          getElementCenter(
-            socketAnchorRefs
-              .current.blue,
-          ),
+      blue: getElementCenter(socketAnchorRefs.current.blue),
 
-        yellow:
-          getElementCenter(
-            socketAnchorRefs
-              .current.yellow,
-          ),
-      });
-    }, [getElementCenter]);
+      yellow: getElementCenter(socketAnchorRefs.current.yellow),
+    });
+  }, [getElementCenter]);
 
   useEffect(() => {
     /*
      * รอ DOM วาง layout ก่อน
      */
-    const frame =
-      requestAnimationFrame(
-        refreshAnchors,
-      );
+    const frame = requestAnimationFrame(refreshAnchors);
 
-    window.addEventListener(
-      "resize",
-      refreshAnchors,
-    );
+    window.addEventListener("resize", refreshAnchors);
 
-    const observer =
-      new ResizeObserver(
-        refreshAnchors,
-      );
+    const observer = new ResizeObserver(refreshAnchors);
 
     if (panelRef.current) {
-      observer.observe(
-        panelRef.current,
-      );
+      observer.observe(panelRef.current);
     }
 
     return () => {
       cancelAnimationFrame(frame);
 
-      window.removeEventListener(
-        "resize",
-        refreshAnchors,
-      );
+      window.removeEventListener("resize", refreshAnchors);
 
       observer.disconnect();
     };
@@ -322,12 +183,9 @@ export default function WirePuzzle({
 
   function beginDrag(
     wire: WireColor,
-    event:
-      React.PointerEvent<HTMLDivElement>,
+    event: React.PointerEvent<HTMLDivElement>,
   ) {
-    if (
-      connected.has(wire)
-    ) {
+    if (connected.has(wire)) {
       return;
     }
 
@@ -335,68 +193,43 @@ export default function WirePuzzle({
 
     setDraggingWire(wire);
 
-    setCursorPoint(
-      getLocalPoint(
-        event.clientX,
-        event.clientY,
-      ),
-    );
+    setCursorPoint(getLocalPoint(event.clientX, event.clientY));
 
-    const definition =
-      WIRES.find(
-        (item) =>
-          item.id === wire,
-      );
+    const definition = WIRES.find((item) => item.id === wire);
 
-    setMessage(
-      `กำลังลากสาย ${definition?.label ?? wire}`,
-    );
+    setMessage(`กำลังลากสาย ${definition?.label ?? wire}`);
   }
 
   // ==============================
   // Drop Detection
   // ==============================
 
-  const findSocketAtPoint =
-    useCallback(
-      (
-        clientX: number,
-        clientY: number,
-      ): WireColor | null => {
-        for (
-          const socket of SOCKETS
-        ) {
-          const element =
-            socketDropRefs.current[
-              socket
-            ];
+  const findSocketAtPoint = useCallback(
+    (clientX: number, clientY: number): WireColor | null => {
+      for (const socket of SOCKETS) {
+        const element = socketDropRefs.current[socket];
 
-          if (!element) {
-            continue;
-          }
-
-          const rect =
-            element.getBoundingClientRect();
-
-          const inside =
-            clientX >=
-              rect.left &&
-            clientX <=
-              rect.right &&
-            clientY >=
-              rect.top &&
-            clientY <=
-              rect.bottom;
-
-          if (inside) {
-            return socket;
-          }
+        if (!element) {
+          continue;
         }
 
-        return null;
-      },
-      [],
-    );
+        const rect = element.getBoundingClientRect();
+
+        const inside =
+          clientX >= rect.left &&
+          clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom;
+
+        if (inside) {
+          return socket;
+        }
+      }
+
+      return null;
+    },
+    [],
+  );
 
   // ==============================
   // Global Pointer Drag
@@ -407,30 +240,16 @@ export default function WirePuzzle({
       return;
     }
 
-    function handlePointerMove(
-      event: PointerEvent,
-    ) {
+    function handlePointerMove(event: PointerEvent) {
       event.preventDefault();
 
-      setCursorPoint(
-        getLocalPoint(
-          event.clientX,
-          event.clientY,
-        ),
-      );
+      setCursorPoint(getLocalPoint(event.clientX, event.clientY));
     }
 
-    function handlePointerUp(
-      event: PointerEvent,
-    ) {
-      const wire =
-        draggingWire;
+    function handlePointerUp(event: PointerEvent) {
+      const wire = draggingWire;
 
-      const socket =
-        findSocketAtPoint(
-          event.clientX,
-          event.clientY,
-        );
+      const socket = findSocketAtPoint(event.clientX, event.clientY);
 
       setDraggingWire(null);
       setCursorPoint(null);
@@ -439,9 +258,7 @@ export default function WirePuzzle({
        * ปล่อยนอก Socket
        */
       if (!socket) {
-        setMessage(
-          "ปล่อยสายลงบนช่อง SOCKET",
-        );
+        setMessage("ปล่อยสายลงบนช่อง SOCKET");
 
         return;
       }
@@ -450,9 +267,7 @@ export default function WirePuzzle({
        * สีผิด
        */
       if (socket !== wire) {
-        setMessage(
-          "สีสายไม่ตรงกับช่อง — ลองใหม่",
-        );
+        setMessage("สีสายไม่ตรงกับช่อง — ลองใหม่");
 
         return;
       }
@@ -460,64 +275,38 @@ export default function WirePuzzle({
       /*
        * ต่อถูก
        */
-      const next =
-        new Set(connected);
+      const next = new Set(connected);
 
       next.add(wire);
 
       setConnected(next);
 
-      setMessage(
-        `เชื่อมต่อสาย ${wire.toUpperCase()} สำเร็จ`,
-      );
+      setMessage(`เชื่อมต่อสาย ${wire.toUpperCase()} สำเร็จ`);
 
-      requestAnimationFrame(
-        refreshAnchors,
-      );
+      requestAnimationFrame(refreshAnchors);
 
       /*
        * ครบทั้ง 3 เส้น
        */
-      if (
-        next.size ===
-        WIRES.length
-      ) {
-        setMessage(
-          "ระบบไฟฟ้ากลับมาทำงานแล้ว",
-        );
+      if (next.size === WIRES.length) {
+        setMessage("ระบบไฟฟ้ากลับมาทำงานแล้ว");
 
-        window.setTimeout(
-          () => {
-            onComplete();
-          },
-          700,
-        );
+        window.setTimeout(() => {
+          onComplete();
+        }, 700);
       }
     }
 
-    window.addEventListener(
-      "pointermove",
-      handlePointerMove,
-      {
-        passive: false,
-      },
-    );
+    window.addEventListener("pointermove", handlePointerMove, {
+      passive: false,
+    });
 
-    window.addEventListener(
-      "pointerup",
-      handlePointerUp,
-    );
+    window.addEventListener("pointerup", handlePointerUp);
 
     return () => {
-      window.removeEventListener(
-        "pointermove",
-        handlePointerMove,
-      );
+      window.removeEventListener("pointermove", handlePointerMove);
 
-      window.removeEventListener(
-        "pointerup",
-        handlePointerUp,
-      );
+      window.removeEventListener("pointerup", handlePointerUp);
     };
   }, [
     draggingWire,
@@ -577,67 +366,82 @@ export default function WirePuzzle({
         >
           {/* สายที่ต่อสำเร็จแล้ว */}
 
-          {WIRES.map(
-            (wire) => {
-              const start =
-                wireAnchors[
-                  wire.id
-                ];
+          {WIRES.map((wire) => {
+            const start = wireAnchors[wire.id];
 
-              const end =
-                socketAnchors[
-                  wire.id
-                ];
+            const end = socketAnchors[wire.id];
 
-              if (
-                !connected.has(
-                  wire.id,
-                ) ||
-                !start ||
-                !end
-              ) {
-                return null;
-              }
+            if (!connected.has(wire.id) || !start || !end) {
+              return null;
+            }
 
-              return (
-                <PhysicsWire
-                  key={`connected-${wire.id}`}
-                  start={start}
-                  end={end}
-                  color={
-                    wire.color
-                  }
+            return (
+              <g key={`connected-${wire.id}`}>
+                {/* Shadow */}
+                <line
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke="rgba(0,0,0,0.55)"
+                  strokeWidth="10"
+                  strokeLinecap="round"
                 />
-              );
-            },
-          )}
+
+                {/* Wire */}
+                <line
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke={wire.color}
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                />
+              </g>
+            );
+          })}
 
           {/* สายที่กำลังลาก */}
 
           {draggingWire &&
             cursorPoint &&
-            wireAnchors[
-              draggingWire
-            ] && (
-              <PhysicsWire
-                key={`drag-${draggingWire}`}
-                start={
-                  wireAnchors[
-                    draggingWire
-                  ]!
-                }
-                end={
-                  cursorPoint
-                }
-                color={
-                  WIRES.find(
-                    (wire) =>
-                      wire.id ===
-                      draggingWire,
-                  )!.color
-                }
-              />
-            )}
+            wireAnchors[draggingWire] &&
+            (() => {
+              const start = wireAnchors[draggingWire]!;
+
+              const wire = WIRES.find((item) => item.id === draggingWire);
+
+              if (!wire) {
+                return null;
+              }
+
+              return (
+                <g>
+                  {/* Shadow */}
+                  <line
+                    x1={start.x}
+                    y1={start.y}
+                    x2={cursorPoint.x}
+                    y2={cursorPoint.y}
+                    stroke="rgba(0,0,0,0.55)"
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Wire */}
+                  <line
+                    x1={start.x}
+                    y1={start.y}
+                    x2={cursorPoint.x}
+                    y2={cursorPoint.y}
+                    stroke={wire.color}
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                  />
+                </g>
+              );
+            })()}
         </svg>
 
         {/* ==========================
@@ -705,23 +509,15 @@ export default function WirePuzzle({
               space-y-5
             "
           >
-            {WIRES.map(
-              (wire) => {
-                const done =
-                  connected.has(
-                    wire.id,
-                  );
+            {WIRES.map((wire) => {
+              const done = connected.has(wire.id);
 
-                const dragging =
-                  draggingWire ===
-                  wire.id;
+              const dragging = draggingWire === wire.id;
 
-                return (
-                  <div
-                    key={
-                      wire.id
-                    }
-                    className={`
+              return (
+                <div
+                  key={wire.id}
+                  className={`
                       flex
                       w-full
                       items-center
@@ -740,50 +536,36 @@ export default function WirePuzzle({
                             : "border-white/10 bg-white/5"
                       }
                     `}
-                  >
-                    <div
-                      className="
+                >
+                  <div
+                    className="
                         flex
                         items-center
                         gap-3
                       "
-                    >
-                      <div
-                        className={`
+                  >
+                    <div
+                      className={`
                           h-3
                           w-14
                           rounded-full
                           ${wire.className}
                         `}
-                      />
+                    />
 
-                      <span>
-                        {
-                          wire.label
-                        }
-                      </span>
-                    </div>
+                    <span>{wire.label}</span>
+                  </div>
 
-                    {/* จุดจับสาย */}
+                  {/* จุดจับสาย */}
 
-                    <div
-                      ref={(
-                        element,
-                      ) => {
-                        wireAnchorRefs.current[
-                          wire.id
-                        ] =
-                          element;
-                      }}
-                      onPointerDown={(
-                        event,
-                      ) => {
-                        beginDrag(
-                          wire.id,
-                          event,
-                        );
-                      }}
-                      className={`
+                  <div
+                    ref={(element) => {
+                      wireAnchorRefs.current[wire.id] = element;
+                    }}
+                    onPointerDown={(event) => {
+                      beginDrag(wire.id, event);
+                    }}
+                    className={`
                         relative
                         h-7
                         w-7
@@ -799,23 +581,22 @@ export default function WirePuzzle({
                             : `${wire.className} cursor-grab active:cursor-grabbing`
                         }
                       `}
-                    >
-                      {!done && (
-                        <div
-                          className="
+                  >
+                    {!done && (
+                      <div
+                        className="
                             absolute
                             inset-[-6px]
                             rounded-full
                             border
                             border-white/10
                           "
-                        />
-                      )}
-                    </div>
+                      />
+                    )}
                   </div>
-                );
-              },
-            )}
+                </div>
+              );
+            })}
           </div>
 
           {/* CENTER */}
@@ -841,34 +622,18 @@ export default function WirePuzzle({
               space-y-5
             "
           >
-            {SOCKETS.map(
-              (socket) => {
-                const wire =
-                  WIRES.find(
-                    (value) =>
-                      value.id ===
-                      socket,
-                  )!;
+            {SOCKETS.map((socket) => {
+              const wire = WIRES.find((value) => value.id === socket)!;
 
-                const done =
-                  connected.has(
-                    socket,
-                  );
+              const done = connected.has(socket);
 
-                return (
-                  <div
-                    key={
-                      socket
-                    }
-                    ref={(
-                      element,
-                    ) => {
-                      socketDropRefs.current[
-                        socket
-                      ] =
-                        element;
-                    }}
-                    className={`
+              return (
+                <div
+                  key={socket}
+                  ref={(element) => {
+                    socketDropRefs.current[socket] = element;
+                  }}
+                  className={`
                       flex
                       w-full
                       items-center
@@ -887,25 +652,16 @@ export default function WirePuzzle({
                             : "border-white/10 bg-black/30"
                       }
                     `}
-                  >
-                    <span>
-                      {done
-                        ? "CONNECTED"
-                        : "SOCKET"}
-                    </span>
+                >
+                  <span>{done ? "CONNECTED" : "SOCKET"}</span>
 
-                    {/* จุดปลายสาย */}
+                  {/* จุดปลายสาย */}
 
-                    <div
-                      ref={(
-                        element,
-                      ) => {
-                        socketAnchorRefs.current[
-                          socket
-                        ] =
-                          element;
-                      }}
-                      className={`
+                  <div
+                    ref={(element) => {
+                      socketAnchorRefs.current[socket] = element;
+                    }}
+                    className={`
                         h-6
                         w-6
                         rounded-full
@@ -914,11 +670,10 @@ export default function WirePuzzle({
                         shadow-lg
                         ${wire.className}
                       `}
-                    />
-                  </div>
-                );
-              },
-            )}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -942,20 +697,14 @@ export default function WirePuzzle({
               text-white/35
             "
           >
-            {
-              connected.size
-            }
+            {connected.size}
             {" / "}
-            {
-              WIRES.length
-            }
+            {WIRES.length}
             {" CONNECTED"}
           </div>
 
           <button
-            onClick={
-              onClose
-            }
+            onClick={onClose}
             className="
               rounded-lg
               border

@@ -82,9 +82,7 @@ import { usePlayerJumpLanding } from "./systems/playerJumpLanding";
 import { usePlayerLedgeTraversal } from "./systems/playerLedgeTraversal";
 import { usePlayerInput } from "./usePlayerInput";
 import { PUSH_PLAYER_SPEED } from "../interactions/push/pushConfig";
-import {
-    usePlayerFootsteps,
-} from "../systems/usePlayerFootsteps";
+import { usePlayerFootsteps } from "../systems/usePlayerFootsteps";
 
 import type { PushInteractionState } from "../interactions/push/pushTypes";
 
@@ -98,8 +96,26 @@ function moveTowards(current: number, target: number, maxDelta: number) {
   return current + Math.sign(delta) * maxDelta;
 }
 
+// ========================================
+// Damage Feedback
+// ========================================
+
+const DAMAGE_SPEED_MULTIPLIER = 0.55;
+
+const DAMAGE_CAMERA_SHAKE_DURATION = 0.38;
+
+const DAMAGE_CAMERA_SHAKE_POSITION = 0.38;
+
+const DAMAGE_CAMERA_SHAKE_ROLL = 0.028;
+
 type PlayerProps = {
+  mapId: string;
+
   pushState: PushInteractionState;
+
+  damageEffectId?: number;
+
+  damageSlowActive?: boolean;
 
   spawnPosition?: [number, number, number];
 
@@ -134,7 +150,10 @@ type PlayerProps = {
 };
 
 export default function Player({
+  mapId,
   pushState,
+  damageEffectId = 0,
+  damageSlowActive = false,
   spawnPosition = [-10, 3, 0],
   mapExitTransition,
   onMapExitWalkComplete,
@@ -147,7 +166,60 @@ export default function Player({
 
   const { updateCamera } = usePlayerCamera({
     camera,
+    mapId,
   });
+
+  // ========================================
+  // Damage Camera Shake
+  // ========================================
+
+  const damageShakeTimerRef = useRef(0);
+
+  useEffect(() => {
+    if (damageEffectId <= 0) {
+      return;
+    }
+
+    damageShakeTimerRef.current = DAMAGE_CAMERA_SHAKE_DURATION;
+  }, [damageEffectId]);
+
+  function applyDamageCameraShake(safeDelta: number) {
+    if (damageShakeTimerRef.current <= 0) {
+      return;
+    }
+
+    const progress = Math.max(
+      0,
+      damageShakeTimerRef.current / DAMAGE_CAMERA_SHAKE_DURATION,
+    );
+
+    /*
+     * ตอนแรกแรง
+     * แล้วค่อย ๆ เบาลง
+     */
+    const strength = progress * progress;
+
+    const shakeX =
+      (Math.random() * 2 - 1) * DAMAGE_CAMERA_SHAKE_POSITION * strength;
+
+    const shakeY =
+      (Math.random() * 2 - 1) * DAMAGE_CAMERA_SHAKE_POSITION * 0.7 * strength;
+
+    const shakeRoll =
+      (Math.random() * 2 - 1) * DAMAGE_CAMERA_SHAKE_ROLL * strength;
+
+    camera.position.x += shakeX;
+
+    camera.position.y += shakeY;
+
+    camera.rotation.z += shakeRoll;
+
+    damageShakeTimerRef.current = Math.max(
+      0,
+
+      damageShakeTimerRef.current - safeDelta,
+    );
+  }
 
   const {
     keys,
@@ -335,9 +407,8 @@ export default function Player({
 
   usePlayerFootsteps({
     animation,
-    groundedRef:
-        stableGrounded,
-});
+    groundedRef: stableGrounded,
+  });
 
   // ==============================
   // Game Loop
@@ -658,6 +729,8 @@ export default function Player({
         changeAnimation("Idle");
       }
 
+      applyDamageCameraShake(safeDelta);
+
       return;
     }
 
@@ -943,6 +1016,14 @@ export default function Player({
       maxSpeed = RUN_SPEED;
     }
 
+    /*
+     * โดนโจมตี
+     * ลด Movement Speed ชั่วคราว
+     */
+    if (damageSlowActive) {
+      maxSpeed *= DAMAGE_SPEED_MULTIPLIER;
+    }
+
     const isRunStopping = groundTransition.current === "RunStop";
 
     const targetVelocityX = isRunStopping ? 0 : direction * maxSpeed;
@@ -1224,11 +1305,10 @@ export default function Player({
           smooth,
         );
       } else {
-
-      /*
-       * 35% หลัง
-       * ขยับเข้า Platform
-       */
+        /*
+         * 35% หลัง
+         * ขยับเข้า Platform
+         */
         const phase = (progress - 0.65) / 0.35;
 
         const smooth = phase * phase * (3 - 2 * phase);
@@ -2042,6 +2122,8 @@ export default function Player({
       isRunning,
       safeDelta,
     });
+
+    applyDamageCameraShake(safeDelta);
 
     if (position.y < -10) {
       // ============================

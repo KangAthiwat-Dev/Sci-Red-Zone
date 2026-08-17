@@ -18,6 +18,10 @@ import {
     WALK_LOOK_AHEAD,
 } from "../playerConfig";
 
+import {
+    getCameraZone,
+} from "./cameraZones";
+
 // ==============================
 // Types
 // ==============================
@@ -40,6 +44,8 @@ type UpdatePlayerCameraOptions = {
 
 type UsePlayerCameraOptions = {
     camera: THREE.Camera;
+
+    mapId: string;
 };
 
 // ==============================
@@ -48,7 +54,20 @@ type UsePlayerCameraOptions = {
 
 export function usePlayerCamera({
     camera,
+    mapId,
 }: UsePlayerCameraOptions) {
+    // ==============================
+    // Default FOV
+    // ==============================
+
+    const defaultFov =
+        useRef(
+            camera instanceof
+                THREE.PerspectiveCamera
+                ? camera.fov
+                : 48,
+        );
+
     // ==============================
     // Camera State
     // ==============================
@@ -88,18 +107,53 @@ export function usePlayerCamera({
                 safeDelta,
             }: UpdatePlayerCameraOptions) => {
                 // ============================
-                // Cinematic Side Camera
+                // Camera Zone
                 // ============================
 
-                /*
-                 * ถ้าเดินขวา direction = 1
-                 * ถ้าเดินซ้าย direction = -1
-                 *
-                 * กล้องจะมองล่วงหน้า
-                 * ไปยังทิศที่ Player เดิน
-                 */
+                const zone =
+                    getCameraZone(
+                        mapId,
+                        position.x,
+                    );
 
-                let targetLookAhead = 0;
+                // ============================
+                // Zone Settings
+                // ============================
+
+                const cameraHeight =
+                    zone?.cameraHeight ??
+                    CAMERA_HEIGHT;
+
+                const cameraDistance =
+                    zone?.cameraDistance ??
+                    CAMERA_DISTANCE;
+
+                const targetHeight =
+                    zone?.targetHeight ??
+                    CAMERA_TARGET_HEIGHT;
+
+                const cameraXOffset =
+                    zone?.cameraXOffset ??
+                    0;
+
+                const targetXOffset =
+                    zone?.targetXOffset ??
+                    0;
+
+                const targetZ =
+                    zone?.targetZ ??
+                    0;
+
+                const lookAheadScale =
+                    zone?.lookAheadScale ??
+                    1;
+
+                // ============================
+                // Look Ahead
+                // ============================
+
+                let targetLookAhead =
+                    0;
 
                 if (isMoving) {
                     targetLookAhead =
@@ -108,93 +162,130 @@ export function usePlayerCamera({
                             isRunning
                                 ? RUN_LOOK_AHEAD
                                 : WALK_LOOK_AHEAD
-                        );
+                        ) *
+                        lookAheadScale;
                 }
 
                 // ============================
                 // Look Ahead Smoothing
                 // ============================
 
-                /*
-                 * เวลาเปลี่ยนซ้าย → ขวา
-                 * หรือขวา → ซ้าย
-                 *
-                 * ไม่ให้กล้องกระชากทันที
-                 */
-
                 const lookAheadSmoothing =
                     1 -
                     Math.exp(
                         -LOOK_AHEAD_SPEED *
-                        safeDelta,
+                            safeDelta,
                     );
 
                 cameraLookAhead.current =
                     THREE.MathUtils.lerp(
                         cameraLookAhead.current,
+
                         targetLookAhead,
+
                         lookAheadSmoothing,
+                    );
+
+                // ============================
+                // Desired Target X
+                // ============================
+
+                const targetX =
+                    zone?.fixedTargetX ??
+                    (
+                        position.x +
+                        targetXOffset +
+                        cameraLookAhead.current
+                    );
+
+                // ============================
+                // Desired Target Y
+                // ============================
+
+                const targetY =
+                    zone?.fixedTargetY ??
+                    (
+                        position.y +
+                        targetHeight
                     );
 
                 // ============================
                 // Camera Target
                 // ============================
 
-                /*
-                 * จุดที่กล้องจะมอง
-                 */
-
                 desiredCameraTarget.current.set(
-                    position.x +
-                        cameraLookAhead.current,
+                    targetX,
 
-                    position.y +
-                        CAMERA_TARGET_HEIGHT,
+                    targetY,
 
-                    0,
+                    targetZ,
                 );
+
+                // ============================
+                // Desired Camera X
+                // ============================
+
+                const cameraX =
+                    zone?.fixedCameraX ??
+                    (
+                        position.x +
+                        cameraXOffset +
+                        cameraLookAhead.current *
+                            0.45
+                    );
+
+                // ============================
+                // Desired Camera Y
+                // ============================
+
+                const cameraY =
+                    zone?.fixedCameraY ??
+                    (
+                        position.y +
+                        cameraHeight
+                    );
 
                 // ============================
                 // Camera Position
                 // ============================
 
-                /*
-                 * X:
-                 * ตาม Player
-                 * + Look Ahead เล็กน้อย
-                 *
-                 * Y:
-                 * อยู่เหนือ Player
-                 *
-                 * Z:
-                 * อยู่ด้านหน้าฉาก
-                 * สำหรับ Side View
-                 */
-
                 desiredCameraPosition.current.set(
-                    position.x +
-                        cameraLookAhead.current *
-                            0.45,
+                    cameraX,
 
-                    position.y +
-                        CAMERA_HEIGHT,
+                    cameraY,
 
-                    CAMERA_DISTANCE,
+                    cameraDistance,
                 );
+
+                // ============================
+                // Smoothing Speed
+                // ============================
+
+                const horizontalSpeed =
+                    zone?.transitionSpeed ??
+                    CAMERA_FOLLOW_SPEED;
+
+                const verticalSpeed =
+                    zone?.transitionSpeed ??
+                    CAMERA_VERTICAL_SPEED;
+
+                const horizontalSmoothing =
+                    1 -
+                    Math.exp(
+                        -horizontalSpeed *
+                            safeDelta,
+                    );
+
+                const verticalSmoothing =
+                    1 -
+                    Math.exp(
+                        -verticalSpeed *
+                            safeDelta,
+                    );
 
                 // ============================
                 // First Frame
                 // ============================
-
-                /*
-                 * เฟรมแรก
-                 *
-                 * ให้กล้องไปหา Player
-                 * ทันที
-                 *
-                 * ไม่งั้นกล้องจะค่อย ๆ
-                 * บินจากตำแหน่งเริ่มต้น
-                 */
 
                 if (
                     !cameraInitialized.current
@@ -207,6 +298,21 @@ export function usePlayerCamera({
                         desiredCameraTarget.current,
                     );
 
+                    // ========================
+                    // Initial FOV
+                    // ========================
+
+                    if (
+                        camera instanceof
+                        THREE.PerspectiveCamera
+                    ) {
+                        camera.fov =
+                            zone?.fov ??
+                            defaultFov.current;
+
+                        camera.updateProjectionMatrix();
+                    }
+
                     camera.lookAt(
                         currentCameraTarget.current,
                     );
@@ -218,107 +324,129 @@ export function usePlayerCamera({
                 }
 
                 // ============================
-                // Horizontal Smoothing
+                // Camera Position X
                 // ============================
-
-                /*
-                 * X / Z ตาม Player เร็วกว่า Y
-                 */
-
-                const horizontalSmoothing =
-                    1 -
-                    Math.exp(
-                        -CAMERA_FOLLOW_SPEED *
-                        safeDelta,
-                    );
 
                 camera.position.x =
                     THREE.MathUtils.lerp(
                         camera.position.x,
+
                         desiredCameraPosition
                             .current.x,
+
                         horizontalSmoothing,
                     );
+
+                // ============================
+                // Camera Position Z
+                // ============================
 
                 camera.position.z =
                     THREE.MathUtils.lerp(
                         camera.position.z,
+
                         desiredCameraPosition
                             .current.z,
+
                         horizontalSmoothing,
                     );
 
                 // ============================
-                // Vertical Smoothing
+                // Camera Position Y
                 // ============================
-
-                /*
-                 * Y ตามช้ากว่า
-                 *
-                 * เวลา Jump / Fall
-                 * กล้องจะไม่เด้งขึ้นลง
-                 * ตาม Player แบบแข็ง ๆ
-                 */
-
-                const verticalSmoothing =
-                    1 -
-                    Math.exp(
-                        -CAMERA_VERTICAL_SPEED *
-                        safeDelta,
-                    );
 
                 camera.position.y =
                     THREE.MathUtils.lerp(
                         camera.position.y,
+
                         desiredCameraPosition
                             .current.y,
+
                         verticalSmoothing,
                     );
 
                 // ============================
-                // Target Smoothing
+                // Target X
                 // ============================
 
                 currentCameraTarget.current.x =
                     THREE.MathUtils.lerp(
                         currentCameraTarget
                             .current.x,
+
                         desiredCameraTarget
                             .current.x,
+
                         horizontalSmoothing,
                     );
+
+                // ============================
+                // Target Y
+                // ============================
 
                 currentCameraTarget.current.y =
                     THREE.MathUtils.lerp(
                         currentCameraTarget
                             .current.y,
+
                         desiredCameraTarget
                             .current.y,
+
                         verticalSmoothing,
                     );
 
-                /*
-                 * Side Scroller
-                 * ล็อก Target Z = 0
-                 */
+                // ============================
+                // Target Z
+                // ============================
 
                 currentCameraTarget.current.z =
-                    0;
+                    THREE.MathUtils.lerp(
+                        currentCameraTarget
+                            .current.z,
+
+                        desiredCameraTarget
+                            .current.z,
+
+                        horizontalSmoothing,
+                    );
 
                 // ============================
-                // Look At Player
+                // FOV / Zoom
+                // ============================
+
+                if (
+                    camera instanceof
+                    THREE.PerspectiveCamera
+                ) {
+                    const targetFov =
+                        zone?.fov ??
+                        defaultFov.current;
+
+                    camera.fov =
+                        THREE.MathUtils.lerp(
+                            camera.fov,
+
+                            targetFov,
+
+                            horizontalSmoothing,
+                        );
+
+                    camera.updateProjectionMatrix();
+                }
+
+                // ============================
+                // Look At
                 // ============================
 
                 camera.lookAt(
                     currentCameraTarget.current,
                 );
             },
-            [camera],
+            [
+                camera,
+                mapId,
+            ],
         );
-
-    // ==============================
-    // Public API
-    // ==============================
 
     return {
         updateCamera,

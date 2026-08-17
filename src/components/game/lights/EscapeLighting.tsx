@@ -215,7 +215,6 @@ export default function EscapeLighting() {
             <CeilingLamp
                 x={67}
                 intensity={34}
-                flicker
             />
 
             {/* =================================

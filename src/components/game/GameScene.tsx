@@ -41,6 +41,8 @@ import GameLoadingScreen from "./ui/GameLoadingScreen";
 import EscapeScanDisplay from "./escape/EscapeScanDisplay";
 import { InteractionLockProvider } from "./interactions/InteractionLockContext";
 import SceneMusic from "./audio/SceneMusic";
+import DamageOverlay from "./damage/DamageOverlay";
+import GameOverOverlay from "./damage/GameOverOverlay";
 
 const MODEL_BOXWOOD_POSITION: [number, number, number] = [46, 1.65, -1.2];
 
@@ -69,6 +71,20 @@ export default function GameScene() {
   const [showAntidoteMessage, setShowAntidoteMessage] = useState(false);
 
   const [playerHealth, setPlayerHealth] = useState(100);
+
+  const [mapRespawnKey, setMapRespawnKey] = useState(0);
+
+  const [damageEffectId, setDamageEffectId] = useState(0);
+
+  const [damageSlowActive, setDamageSlowActive] = useState(false);
+
+  const damageSlowTimerRef = useRef<number | null>(null);
+
+  /*
+   * ไม่ต้องสร้าง gameOver state ซ้ำ
+   * HP 0 = Game Over ทันที
+   */
+  const gameOver = playerHealth <= 0;
 
   const [pushState, setPushState] = useState<PushInteractionState>(
     DEFAULT_PUSH_INTERACTION_STATE,
@@ -106,7 +122,8 @@ export default function GameScene() {
     stairwayWirePuzzleOpen ||
     activeLabPuzzle !== null ||
     antidoteInteractionActive ||
-    endingStarted;
+    endingStarted ||
+    gameOver;
 
   function startMapExitTransition() {
     if (mapTransitionBusyRef.current) {
@@ -284,8 +301,94 @@ export default function GameScene() {
   }, []);
 
   function handleZombieAttack(damage: number) {
+    /*
+     * ตายแล้วไม่รับ damage ซ้ำ
+     */
+    if (gameOver || endingStarted) {
+      return;
+    }
+
+    // ==================================
+    // Damage Visual + Camera
+    // ==================================
+
+    setDamageEffectId((current) => current + 1);
+
+    // ==================================
+    // Temporary Slow
+    // ==================================
+
+    setDamageSlowActive(true);
+
+    if (damageSlowTimerRef.current !== null) {
+      window.clearTimeout(damageSlowTimerRef.current);
+    }
+
+    damageSlowTimerRef.current = window.setTimeout(() => {
+      setDamageSlowActive(false);
+
+      damageSlowTimerRef.current = null;
+    }, 700);
+
+    // ==================================
+    // HP
+    // ==================================
+
     setPlayerHealth((current) => Math.max(0, current - damage));
   }
+
+  function respawnCurrentMap() {
+    // ==============================
+    // HP
+    // ==============================
+
+    setPlayerHealth(100);
+
+    // ==============================
+    // Damage Effect
+    // ==============================
+
+    setDamageSlowActive(false);
+
+    if (damageSlowTimerRef.current !== null) {
+      window.clearTimeout(damageSlowTimerRef.current);
+
+      damageSlowTimerRef.current = null;
+    }
+
+    // ==============================
+    // Reset Current Scene
+    // ==============================
+
+    if (currentMap.id === "escape") {
+      /*
+       * กลับไปก่อนเปิดเครื่อง
+       *
+       * Console เปิดใช้งานอีกครั้ง
+       * Scan ปิด
+       * Zombie ยังไม่ Spawn
+       */
+      setEscapePhase("control");
+
+      setEndingStarted(false);
+
+      setEndingVideoVisible(false);
+    }
+
+    // ==============================
+    // Respawn Player / Enemy
+    // ==============================
+
+    setMapRespawnKey((current) => current + 1);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (damageSlowTimerRef.current !== null) {
+        window.clearTimeout(damageSlowTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // ====================================
@@ -458,7 +561,7 @@ export default function GameScene() {
                     <EscapeEndingTrigger
                       position={currentMap.exit.position}
                       halfExtents={currentMap.exit.halfExtents}
-                      enabled={!endingStarted}
+                      enabled={!endingStarted && !gameOver}
                       onEnter={startEndingSequence}
                     />
                   )}
@@ -517,10 +620,14 @@ export default function GameScene() {
 
                 {mapAssetsReady && (
                   <Player
-                    key={`player-${currentMap.id}`}
+                    key={`player-${currentMap.id}-${mapRespawnKey}`}
+                    mapId={currentMap.id}
                     pushState={pushState}
                     spawnPosition={currentMap.spawnPosition}
+                    damageEffectId={damageEffectId}
+                    damageSlowActive={damageSlowActive}
                     controlsLocked={
+                      gameOver ||
                       endingStarted ||
                       stairwayWirePuzzleOpen ||
                       activeLabPuzzle !== null ||
@@ -577,15 +684,18 @@ export default function GameScene() {
 
                 {mapAssetsReady &&
                   currentMap.id === "escape" &&
-                  escapePhase === "chase" && (
+                  escapePhase === "chase" &&
+                  !gameOver && (
                     <>
                       <ZombieEnemy
+                        key={`zombie-normal-${mapRespawnKey}`}
                         position={[10, 5, 0]}
                         patrolDistance={5}
                         onAttackHit={handleZombieAttack}
                       />
 
                       <ZombieEnemy
+                        key={`zombie-crawler-${mapRespawnKey}`}
                         position={[90, 5, 0]}
                         patrolDistance={4}
                         variant="crawler"
@@ -641,6 +751,10 @@ export default function GameScene() {
           },
         ]}
       />
+
+      <DamageOverlay hitKey={damageEffectId} />
+
+      <GameOverOverlay visible={gameOver} onRestart={respawnCurrentMap} />
 
       {stairwayWirePuzzleOpen && (
         <WirePuzzle
