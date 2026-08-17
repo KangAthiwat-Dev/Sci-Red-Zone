@@ -101,7 +101,3 @@ export default function LaboratoryCollision() {
     </>
   );
 }
-
-useGLTF.preload("/maps/laboratory/visual.glb");
-
-useGLTF.preload("/maps/laboratory/collision.glb");

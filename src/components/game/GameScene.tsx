@@ -129,14 +129,12 @@ export default function GameScene() {
     gameOver;
 
   /*
- * Pause Rapier เฉพาะตอนเปิด Puzzle UI
- *
- * ตัว Puzzle เป็น DOM/UI อยู่นอก Physics
- * จึงยังทำงานตามปกติ
- */
-const physicsPaused =
-  stairwayWirePuzzleOpen ||
-  activeLabPuzzle !== null;
+   * Pause Rapier เฉพาะตอนเปิด Puzzle UI
+   *
+   * ตัว Puzzle เป็น DOM/UI อยู่นอก Physics
+   * จึงยังทำงานตามปกติ
+   */
+  const physicsPaused = stairwayWirePuzzleOpen || activeLabPuzzle !== null;
 
   function startMapExitTransition() {
     if (mapTransitionBusyRef.current) {
@@ -170,6 +168,14 @@ const physicsPaused =
     const nextMap = GAME_MAPS[nextMapIndex];
 
     window.setTimeout(() => {
+      /*
+       * Map ใหม่ยังไม่พร้อม
+       *
+       * รอ MapAssetGate
+       * รายงานกลับมาอีกครั้ง
+       */
+      setMapAssetsReady(false);
+
       setCurrentMapIndex(nextMapIndex);
 
       setMapExitTransitionActive(false);
@@ -486,7 +492,7 @@ const physicsPaused =
       >
         <GpuSpikeDebug />
 
-        <GpuWarmup enabled={currentMap.id === "stairway"} />
+        <GpuWarmup enabled={mapAssetsReady} warmupKey={currentMap.id} />
 
         {currentMap.id === "faculty-hall" && <HallLighting />}
         {currentMap.id === "stairway" && <StairwayLighting />}
@@ -502,7 +508,11 @@ const physicsPaused =
             setReady={setMapAssetsReady}
           >
             <InteractionLockProvider locked={interactionUiLocked}>
-              <Physics gravity={[0, -18, 0]} debug={false} paused={physicsPaused}>
+              <Physics
+                gravity={[0, -18, 0]}
+                debug={false}
+                paused={physicsPaused}
+              >
                 <GameMap
                   key={`map-${currentMap.id}`}
                   map={currentMap}

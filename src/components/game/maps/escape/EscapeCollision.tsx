@@ -54,11 +54,3 @@ export default function EscapeCollision() {
     </>
   );
 }
-
-// ========================================
-// Preload
-// ========================================
-
-useGLTF.preload("/maps/escape/visual.glb");
-
-useGLTF.preload("/maps/escape/collision.glb");

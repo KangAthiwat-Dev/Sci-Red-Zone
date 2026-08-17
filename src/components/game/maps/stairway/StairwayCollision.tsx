@@ -55,7 +55,3 @@ export default function StairwayCollision() {
     </>
   );
 }
-
-useGLTF.preload("/maps/stairway/visual.glb");
-
-useGLTF.preload("/maps/stairway/collision.glb");

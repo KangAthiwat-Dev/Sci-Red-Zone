@@ -1,131 +1,92 @@
 "use client";
 
-import {
-    useEffect,
-} from "react";
+import { useEffect } from "react";
 
-import {
-    useThree,
-} from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 
 import * as THREE from "three";
 
 type GpuWarmupProps = {
-    enabled?: boolean;
+  enabled?: boolean;
+
+  /*
+   * เปลี่ยนค่านี้เมื่อเปลี่ยน Map
+   * เพื่อบังคับ Warmup ใหม่
+   */
+  warmupKey?: string;
 };
 
 const TEXTURE_KEYS = [
-    "map",
-    "normalMap",
-    "roughnessMap",
-    "metalnessMap",
-    "aoMap",
-    "emissiveMap",
-    "alphaMap",
-    "bumpMap",
-    "lightMap",
+  "map",
+  "normalMap",
+  "roughnessMap",
+  "metalnessMap",
+  "aoMap",
+  "emissiveMap",
+  "alphaMap",
+  "bumpMap",
+  "lightMap",
 ] as const;
 
 export default function GpuWarmup({
-    enabled = true,
+  enabled = true,
+  warmupKey,
 }: GpuWarmupProps) {
-    const {
-        gl,
-        scene,
-        camera,
-    } = useThree();
+  const { gl, scene, camera } = useThree();
 
-    useEffect(() => {
-        if (!enabled) {
-            return;
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function warmup() {
+      /*
+       * 1. Upload textures
+       * เข้า GPU ล่วงหน้า
+       */
+      scene.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) {
+          return;
         }
 
-        let cancelled = false;
+        const materials = Array.isArray(object.material)
+          ? object.material
+          : [object.material];
 
-        async function warmup() {
-            /*
-             * 1. Upload textures
-             * เข้า GPU ล่วงหน้า
-             */
-            scene.traverse(
-                (object) => {
-                    if (
-                        !(
-                            object instanceof
-                            THREE.Mesh
-                        )
-                    ) {
-                        return;
-                    }
+        for (const material of materials) {
+          for (const key of TEXTURE_KEYS) {
+            const texture = (material as unknown as Record<string, unknown>)[
+              key
+            ];
 
-                    const materials =
-                        Array.isArray(
-                            object.material,
-                        )
-                            ? object.material
-                            : [
-                                  object.material,
-                              ];
-
-                    for (
-                        const material
-                        of materials
-                    ) {
-                        for (
-                            const key
-                            of TEXTURE_KEYS
-                        ) {
-                            const texture =
-                                (
-                                    material as unknown as
-                                        Record<
-                                            string,
-                                            unknown
-                                        >
-                                )[key];
-
-                            if (
-                                texture instanceof
-                                THREE.Texture
-                            ) {
-                                gl.initTexture(
-                                    texture,
-                                );
-                            }
-                        }
-                    }
-                },
-            );
-
-            /*
-             * 2. Compile Shader
-             * ล่วงหน้า
-             */
-            await gl.compileAsync(
-                scene,
-                camera,
-            );
-
-            if (cancelled) {
-                return;
+            if (texture instanceof THREE.Texture) {
+              gl.initTexture(texture);
             }
-
-            console.log(
-                "[GPU] warmup complete",
-            );
+          }
         }
+      });
 
-        void warmup();
+      /*
+       * 2. Compile Shader
+       * ล่วงหน้า
+       */
+      await gl.compileAsync(scene, camera);
 
-        return () => {
-            cancelled = true;
-        };
-    }, [
-        enabled,
-        gl,
-        scene,
-        camera,
-    ]);
+      if (cancelled) {
+        return;
+      }
 
-    return null;
+      console.log("[GPU] warmup complete:", warmupKey);
+    }
+
+    void warmup();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, warmupKey, gl, scene, camera]);
+
+  return null;
 }
