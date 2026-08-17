@@ -6,73 +6,57 @@ import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 
 export default function FacultyHallCollision() {
-    // ============================
-    // Visual Map
-    // ============================
+  // ============================
+  // Visual Map
+  // ============================
 
-    const visual = useGLTF(
-        "/maps/faculty-hall/visual.glb",
-    );
+  const visual = useGLTF("/maps/faculty-hall/visual.glb");
 
-    // ============================
-    // Collision Map
-    // ============================
+  // ============================
+  // Collision Map
+  // ============================
 
-    const collision = useGLTF(
-        "/maps/faculty-hall/collision.glb",
-    );
+  const collision = useGLTF("/maps/faculty-hall/collision.glb");
 
-    // ============================
-    // Shadow
-    // ============================
+  // ============================
+  // Shadow
+  // ============================
 
-    useEffect(() => {
-        visual.scene.traverse((object) => {
-            if (object instanceof THREE.Mesh) {
-                object.castShadow = true;
-                object.receiveShadow = true;
-            }
-        });
-    }, [visual.scene]);
+  useEffect(() => {
+    visual.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = false;
+        object.receiveShadow = false;
+        object.frustumCulled = true;
+      }
+    });
+  }, [visual.scene]);
 
-    return (
-        <>
-            {/* =====================
+  return (
+    <>
+      {/* =====================
                 Visual Map
                 ไม่มี Physics
             ===================== */}
 
-            <primitive
-                object={visual.scene}
-            />
+      <primitive object={visual.scene} />
 
-            {/* =====================
+      {/* =====================
                 Collision Map
                 มี Physics แต่ซ่อน Mesh
             ===================== */}
 
-            <RigidBody
-                type="fixed"
-                colliders="trimesh"
-                includeInvisible
-            >
-                <primitive
-                    object={collision.scene}
-                    visible={false}
-                />
-            </RigidBody>
-        </>
-    );
+      <RigidBody type="fixed" colliders="trimesh" includeInvisible>
+        <primitive object={collision.scene} visible={false} />
+      </RigidBody>
+    </>
+  );
 }
 
 // ============================
 // Preload
 // ============================
 
-useGLTF.preload(
-    "/maps/faculty-hall/visual.glb",
-);
+useGLTF.preload("/maps/faculty-hall/visual.glb");
 
-useGLTF.preload(
-    "/maps/faculty-hall/collision.glb",
-);
+useGLTF.preload("/maps/faculty-hall/collision.glb");

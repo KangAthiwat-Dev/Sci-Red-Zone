@@ -518,9 +518,8 @@ export default function ChemicalPuzzle({
                 items-center
                 justify-center
                 overflow-hidden
-                bg-black/55
-                p-6
-                backdrop-blur-[2px]
+                bg-black/80
+p-6backdrop-blur-[2px]
             "
     >
       {/* =================================
@@ -551,30 +550,28 @@ export default function ChemicalPuzzle({
 
         <div
           className="
-                        pointer-events-none
-                        absolute
-                        -left-24
-                        -top-28
-                        h-72
-                        w-72
-                        rounded-full
-                        bg-emerald-400/10
-                        blur-3xl
-                    "
+    pointer-events-none
+    absolute
+    -left-24
+    -top-28
+    h-72
+    w-72
+    rounded-full
+    bg-[radial-gradient(circle,rgba(52,211,153,0.09)_0%,transparent_70%)]
+  "
         />
 
         <div
           className="
-                        pointer-events-none
-                        absolute
-                        -bottom-24
-                        -right-24
-                        h-72
-                        w-72
-                        rounded-full
-                        bg-violet-500/10
-                        blur-3xl
-                    "
+    pointer-events-none
+    absolute
+    -bottom-24
+    -right-24
+    h-72
+    w-72
+    rounded-full
+    bg-[radial-gradient(circle,rgba(139,92,246,0.08)_0%,transparent_70%)]
+  "
         />
 
         {/* =================================
@@ -734,21 +731,21 @@ export default function ChemicalPuzzle({
 
               <div
                 className={`
-                                    pointer-events-none
-                                    absolute
-                                    inset-3
-                                    rounded-full
-                                    blur-2xl
-                                    transition
-                                    duration-300
-                                    ${
-                                      mixStatus === "success"
-                                        ? "bg-emerald-300/40"
-                                        : mixStatus === "error"
-                                          ? "bg-amber-700/30"
-                                          : "bg-cyan-400/10"
-                                    }
-                                `}
+    pointer-events-none
+    absolute
+    inset-3
+    rounded-full
+    transition
+    duration-300
+
+    ${
+      mixStatus === "success"
+        ? "bg-[radial-gradient(circle,rgba(110,231,183,0.30)_0%,transparent_72%)]"
+        : mixStatus === "error"
+          ? "bg-[radial-gradient(circle,rgba(180,83,9,0.22)_0%,transparent_72%)]"
+          : "bg-[radial-gradient(circle,rgba(34,211,238,0.08)_0%,transparent_72%)]"
+    }
+  `}
               />
 
               {/* Fake rear glass */}

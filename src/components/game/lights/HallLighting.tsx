@@ -2,14 +2,12 @@
 
 import LightBeam from "./LightBeam";
 import HangingLamp from "../objects/HangingLamp";
-
 import {
   BUILDING_CEILING_Y,
   HANGING_LAMP_OFFSET_Y,
   CEILING_LIGHT_Z,
   DEFAULT_LIGHT_TARGET_Y,
 } from "./lightingConfig";
-
 import WallEmergencyLight from "../objects/WallEmergencyLight";
 
 // ========================================
@@ -19,23 +17,23 @@ import WallEmergencyLight from "../objects/WallEmergencyLight";
 
 type CeilingLampProps = {
   x: number;
-
   intensity?: number;
-
-  showBeam?: boolean;
+  flicker?: boolean;
+  castShadow?: boolean;
 };
 
 function CeilingLamp({
   x,
-  intensity = 18,
-  showBeam = false,
+  intensity = 100,
+  flicker = false,
+  castShadow = false,
 }: CeilingLampProps) {
   const lampY = BUILDING_CEILING_Y;
 
   return (
     <>
       {/* =========================
-                Lamp Model
+                Hanging Lamp
             ========================= */}
 
       <HangingLamp
@@ -43,28 +41,23 @@ function CeilingLamp({
       />
 
       {/* =========================
-                Beam
-
-                Low spec:
-                เปิดเฉพาะบางดวง
+                Light + Beam
             ========================= */}
 
-      {showBeam && (
-        <LightBeam
-          position={[x, lampY - 0.05, CEILING_LIGHT_Z]}
-          target={[x, DEFAULT_LIGHT_TARGET_Y, 0]}
-          color="#c6dcff"
-          intensity={15}
-          distance={14}
-          angle={0.48}
-          penumbra={1}
-          outerRadius={2.8}
-          beamOpacity={0.045}
-          castShadow={false}
-          shadowMapSize={128}
-          flicker={false}
-        />
-      )}
+      <LightBeam
+        position={[x, lampY - 0.05, CEILING_LIGHT_Z]}
+        target={[x, DEFAULT_LIGHT_TARGET_Y, 0]}
+        color="#ffe1ad"
+        intensity={intensity}
+        distance={25}
+        angle={0.48}
+        penumbra={0.96}
+        outerRadius={2.4}
+        beamOpacity={0.04}
+        castShadow={castShadow}
+        shadowMapSize={512}
+        flicker={flicker}
+      />
     </>
   );
 }
@@ -81,35 +74,22 @@ export default function HallLighting() {
                 Background
             ========================= */}
 
-      <color attach="background" args={["#06080d"]} />
+      <color attach="background" args={["#040609"]} />
 
-      {/* =========================
-                Fog
-
-                เก็บไว้ได้
-                ไม่ใช่ตัวหนักหลัก
-            ========================= */}
-
-      <fog attach="fog" args={["#0a0d14", 8, 26]} />
+      <fog attach="fog" args={["#080a0e", 9, 28]} />
 
       {/* =========================
                 Base Lighting
             ========================= */}
 
-      <ambientLight intensity={0.32} color="#788ba6" />
+      <ambientLight intensity={0.38} color="#80796f" />
 
-      <hemisphereLight intensity={0.62} color="#9bb4d1" groundColor="#080b10" />
-
-      {/* =========================
-                General Direction Light
-
-                ไม่มี Shadow
-            ========================= */}
+      <hemisphereLight intensity={0.23} color="#a59782" groundColor="#070809" />
 
       <directionalLight
         position={[-12, 12, -8]}
-        color="#7895bd"
-        intensity={0.22}
+        color="#667d9e"
+        intensity={0.2}
         castShadow={false}
       />
 
@@ -121,17 +101,17 @@ export default function HallLighting() {
                 แต่เปิด Beam แค่บางดวง
             ========================= */}
 
-      <CeilingLamp x={-10} showBeam intensity={15} />
+      <CeilingLamp x={-10} intensity={25} />
 
-      <CeilingLamp x={6} showBeam intensity={15} />
+      <CeilingLamp x={6} intensity={38} />
 
-      <CeilingLamp x={25} showBeam intensity={15} />
+      <CeilingLamp x={25} intensity={25} />
 
-      <CeilingLamp x={46} showBeam intensity={14} />
+      <CeilingLamp x={46} intensity={24} />
 
-      <CeilingLamp x={60} showBeam intensity={14} />
+      <CeilingLamp x={60} intensity={24} />
 
-      <CeilingLamp x={70} intensity={14} />
+      <CeilingLamp x={70} intensity={38} />
 
       {/* =========================
                 Emergency Light

@@ -64,7 +64,7 @@ function CeilingLamp({
                     DEFAULT_LIGHT_TARGET_Y,
                     0,
                 ]}
-                color="#d9e9ff"
+                color="#ffe1ad"
                 intensity={
                     intensity
                 }
@@ -150,38 +150,42 @@ export default function LaboratoryLighting() {
 
             <CeilingLamp
                 x={-5.5}
-                intensity={32}
-                castShadow
+                intensity={38}
             />
 
             <CeilingLamp
                 x={19}
-                intensity={29}
+                intensity={38}
             />
 
             <CeilingLamp
                 x={36.5}
-                intensity={29}
+                intensity={50}
             />
 
             <CeilingLamp
                 x={58}
-                intensity={34}
+                intensity={38}
             />
 
             <CeilingLamp
                 x={79}
-                intensity={34}
+                intensity={50}
             />
 
             <CeilingLamp
                 x={99}
-                intensity={32}
+                intensity={38}
             />
 
             <CeilingLamp
                 x={124.5}
-                intensity={28}
+                intensity={38}
+            />
+
+            <CeilingLamp
+                x={141}
+                intensity={38}
             />
 
             {/* =================================

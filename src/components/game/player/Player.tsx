@@ -82,7 +82,6 @@ import { usePlayerJumpLanding } from "./systems/playerJumpLanding";
 import { usePlayerLedgeTraversal } from "./systems/playerLedgeTraversal";
 import { usePlayerInput } from "./usePlayerInput";
 import { PUSH_PLAYER_SPEED } from "../interactions/push/pushConfig";
-import { usePlayerFootsteps } from "../systems/usePlayerFootsteps";
 
 import type { PushInteractionState } from "../interactions/push/pushTypes";
 
@@ -404,11 +403,6 @@ export default function Player({
 
     setAnimation(nextAnimation);
   }
-
-  usePlayerFootsteps({
-    animation,
-    groundedRef: stableGrounded,
-  });
 
   // ==============================
   // Game Loop

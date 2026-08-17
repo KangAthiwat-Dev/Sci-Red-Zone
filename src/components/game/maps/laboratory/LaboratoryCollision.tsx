@@ -27,9 +27,10 @@ export default function LaboratoryCollision() {
 
   useEffect(() => {
     visual.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.SkinnedMesh) {
-        object.castShadow = true;
-        object.receiveShadow = true;
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = false;
+        object.receiveShadow = false;
+        object.frustumCulled = true;
       }
     });
   }, [visual.scene]);
@@ -51,7 +52,7 @@ export default function LaboratoryCollision() {
         ========================= */}
       <PushDoor
         position={[8, 2.5, 0]}
-        rotation={[0,Math.PI / 2, 0]}
+        rotation={[0, Math.PI / 2, 0]}
         width={2.5}
         height={5}
         thickness={0.14}
@@ -59,7 +60,7 @@ export default function LaboratoryCollision() {
       />
       <PushDoor
         position={[30.3, 2.5, 0]}
-        rotation={[0,Math.PI / 2, 0]}
+        rotation={[0, Math.PI / 2, 0]}
         width={4}
         height={5}
         thickness={0.14}
@@ -67,7 +68,7 @@ export default function LaboratoryCollision() {
       />
       <PushDoor
         position={[43.3, 2.5, 0]}
-        rotation={[0,Math.PI / 2, 0]}
+        rotation={[0, Math.PI / 2, 0]}
         width={4}
         height={5}
         thickness={0.14}
@@ -75,7 +76,7 @@ export default function LaboratoryCollision() {
       />
       <PushDoor
         position={[72.7, 2.5, 0]}
-        rotation={[0,Math.PI / 2, 0]}
+        rotation={[0, Math.PI / 2, 0]}
         width={4}
         height={5}
         thickness={0.14}
@@ -83,7 +84,7 @@ export default function LaboratoryCollision() {
       />
       <PushDoor
         position={[85.7, 2.5, 0]}
-        rotation={[0,Math.PI / 2, 0]}
+        rotation={[0, Math.PI / 2, 0]}
         width={4}
         height={5}
         thickness={0.14}
@@ -91,7 +92,7 @@ export default function LaboratoryCollision() {
       />
       <PushDoor
         position={[110.3, 2.5, 0]}
-        rotation={[0,Math.PI / 2, 0]}
+        rotation={[0, Math.PI / 2, 0]}
         width={2.5}
         height={5}
         thickness={0.14}

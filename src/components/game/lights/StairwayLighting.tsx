@@ -16,21 +16,15 @@ import WallEmergencyLight from "../objects/WallEmergencyLight";
 
 type CeilingLampProps = {
     x: number;
-
     intensity?: number;
-
     flicker?: boolean;
-
     castShadow?: boolean;
 };
 
 function CeilingLamp({
     x,
-
     intensity = 100,
-
     flicker = false,
-
     castShadow = false,
 }: CeilingLampProps) {
     const lampY =
@@ -114,7 +108,7 @@ export default function StairwayLighting() {
                 args={[
                     "#080a0e",
                     7,
-                    30,
+                    28,
                 ]}
             />
 
@@ -133,10 +127,6 @@ export default function StairwayLighting() {
                 groundColor="#070809"
             />
 
-            {/* =================================
-                Cold Background Fill
-            ================================= */}
-
             <directionalLight
                 position={[
                     -12,
@@ -147,52 +137,28 @@ export default function StairwayLighting() {
                 intensity={0.2}
             />
 
-
-            {/* =================================
-                CEILING LIGHTS
-
-                Map นี้เป็นทางเรียบ
-                Beam ทุกดวงยิงลงพื้น Y เดียวกัน
-            ================================= */}
-
             <CeilingLamp
                 x={-5.5}
                 intensity={34}
             />
 
             <CeilingLamp
-                x={6}
-                intensity={31}
-                castShadow
-            />
-
-            <CeilingLamp
                 x={25}
-                intensity={35}
+                intensity={34}
             />
-
-            {/* =================================
-                Broken Light
-            ================================= */}
 
             <CeilingLamp
                 x={48.5}
                 intensity={38}
             />
 
-            {/* =================================
-                Dark Gap
-
-                จงใจเว้นช่วงมืด
-                เพื่อให้ Player เดินผ่านความมืด
-            ================================= */}
-
             <CeilingLamp
-                x={100}
-                intensity={24}
+                x={82}
+                intensity={38}
             />
+
             <CeilingLamp
-                x={112}
+                x={111}
                 intensity={38}
             />
 

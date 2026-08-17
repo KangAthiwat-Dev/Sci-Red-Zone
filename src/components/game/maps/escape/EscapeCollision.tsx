@@ -19,10 +19,10 @@ export default function EscapeCollision() {
 
   useEffect(() => {
     visual.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.SkinnedMesh) {
-        object.castShadow = true;
-
-        object.receiveShadow = true;
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = false;
+        object.receiveShadow = false;
+        object.frustumCulled = true;
       }
     });
   }, [visual.scene]);

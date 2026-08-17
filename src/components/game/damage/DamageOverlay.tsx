@@ -2,12 +2,19 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
 type DamageOverlayProps = {
   hitKey: number;
 };
+
+const DAMAGE_SOUND =
+  "/sounds/player/hurt.mp3";
+
+const DAMAGE_SOUND_VOLUME =
+  0.55;
 
 export default function DamageOverlay({
   hitKey,
@@ -17,24 +24,85 @@ export default function DamageOverlay({
     setVisible,
   ] = useState(false);
 
+  const hurtAudioRef =
+    useRef<HTMLAudioElement | null>(
+      null,
+    );
+
+  // ========================================
+  // Load Damage Sound
+  // ========================================
+
+  useEffect(() => {
+    const audio =
+      new Audio(
+        DAMAGE_SOUND,
+      );
+
+    audio.preload =
+      "auto";
+
+    audio.volume =
+      DAMAGE_SOUND_VOLUME;
+
+    hurtAudioRef.current =
+      audio;
+
+    return () => {
+      audio.pause();
+      audio.src = "";
+
+      hurtAudioRef.current =
+        null;
+    };
+  }, []);
+
+  // ========================================
+  // Damage Effect
+  // ========================================
+
   useEffect(() => {
     if (hitKey <= 0) {
       return;
     }
 
-    /*
-     * แดงขึ้นทันที
-     */
+    // ======================================
+    // Damage Sound
+    // ======================================
+
+    const audio =
+      hurtAudioRef.current;
+
+    if (audio) {
+      /*
+       * ถ้าโดนตีซ้ำ
+       * ให้เริ่มเสียงใหม่ทันที
+       */
+      audio.currentTime = 0;
+
+      audio
+        .play()
+        .catch(() => {
+          /*
+           * Browser อาจ block
+           * ก่อนมี user interaction
+           */
+        });
+    }
+
+    // ======================================
+    // Red Damage Overlay
+    // ======================================
+
     setVisible(true);
 
-    /*
-     * ค้างแป๊บหนึ่ง
-     * แล้วค่อย Fade ออก
-     */
     const timer =
-      window.setTimeout(() => {
-        setVisible(false);
-      }, 90);
+      window.setTimeout(
+        () => {
+          setVisible(false);
+        },
+        90,
+      );
 
     return () => {
       window.clearTimeout(

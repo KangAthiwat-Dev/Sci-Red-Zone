@@ -70,7 +70,7 @@ function CeilingLamp({
                     DEFAULT_LIGHT_TARGET_Y,
                     0,
                 ]}
-                color="#d6e5f5"
+                color="#ffe1ad"
                 intensity={
                     intensity
                 }
@@ -107,16 +107,16 @@ export default function EscapeLighting() {
             <color
                 attach="background"
                 args={[
-                    "#030608",
+                    "#040609",
                 ]}
             />
 
             <fog
                 attach="fog"
                 args={[
-                    "#071017",
-                    8,
-                    34,
+                    "#080a0e",
+                    7,
+                    30,
                 ]}
             />
 
@@ -126,13 +126,13 @@ export default function EscapeLighting() {
 
             <ambientLight
                 intensity={0.38}
-                color="#66798a"
+                color="#80796f"
             />
 
             <hemisphereLight
-                intensity={0.16}
-                color="#8aa2b8"
-                groundColor="#050708"
+                intensity={0.28}
+                color="#a59782"
+                groundColor="#070809"
             />
 
             {/* =================================
@@ -145,7 +145,7 @@ export default function EscapeLighting() {
                     16,
                     -10,
                 ]}
-                color="#7696b5"
+                color="#667d9e"
                 intensity={0.26}
             />
 
@@ -161,23 +161,13 @@ export default function EscapeLighting() {
             />
 
             <CeilingLamp
-                x={13}
-                intensity={30}
-            />
-            <CeilingLamp
                 x={22}
                 intensity={40}
             />
 
             <CeilingLamp
-                x={30}
-                intensity={27}
-                castShadow
-            />
-
-            <CeilingLamp
-                x={44}
-                intensity={50}
+                x={43}
+                intensity={70}
             />
 
             {/* =================================
@@ -186,21 +176,17 @@ export default function EscapeLighting() {
 
             <CeilingLamp
                 x={67}
-                intensity={34}
-            />
-
-            {/* =================================
-                Dark Gap
-            ================================= */}
-
-            <CeilingLamp
-                x={90}
-                intensity={22}
+                intensity={40}
             />
 
             <CeilingLamp
-                x={113}
-                intensity={36}
+                x={88}
+                intensity={38}
+            />
+
+            <CeilingLamp
+                x={115}
+                intensity={38}
             />
 
             {/* =================================

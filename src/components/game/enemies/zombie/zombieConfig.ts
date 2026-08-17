@@ -33,7 +33,7 @@ export const ZOMBIE_WALK_SPEED =
     3.6;
 
 export const ZOMBIE_RUN_SPEED =
-    9.8;
+    13;
 
 export const ZOMBIE_CRAWL_SPEED =
     1.8;
@@ -50,10 +50,10 @@ export const ZOMBIE_CRAWL_SPEED =
  */
 
 export const ZOMBIE_ATTACK_ANIMATION_SPEED =
-    0.65;
+    1.2;
 
 export const ZOMBIE_ATTACK_DURATION =
-    1.8;
+    1.2;
 
 // ========================================
 // Detection
@@ -63,14 +63,14 @@ export const ZOMBIE_DETECTION_RADIUS =
     10;
 
 export const ZOMBIE_ATTACK_RANGE =
-    1.35;
+    1;
 
 // ========================================
 // Attack
 // ========================================
 
 export const ZOMBIE_ATTACK_DAMAGE =
-    40;
+    50;
 
 // ตอนไหนของ Animation
 // ที่ถือว่า "ตีโดน"

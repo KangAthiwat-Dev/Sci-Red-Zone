@@ -1,49 +1,44 @@
 "use client";
 
-import {
-    useCallback,
-    useEffect,
-    useRef,
-    useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ========================================
 // Types
 // ========================================
 
 type CellData = {
-    id: number;
+  id: number;
 
-    x: number;
-    y: number;
+  x: number;
+  y: number;
 
-    radius: number;
+  radius: number;
 
-    vx: number;
-    vy: number;
+  vx: number;
+  vy: number;
 
-    bad: boolean;
+  bad: boolean;
 
-    found: boolean;
+  found: boolean;
 
-    phase: number;
+  phase: number;
 
-    wobble: number;
+  wobble: number;
 };
 
 type RippleData = {
-    id: number;
+  id: number;
 
-    x: number;
-    y: number;
+  x: number;
+  y: number;
 
-    radius: number;
+  radius: number;
 };
 
 type CellPuzzleProps = {
-    onComplete: () => void;
+  onComplete: () => void;
 
-    onClose: () => void;
+  onClose: () => void;
 };
 
 // ========================================
@@ -54,732 +49,472 @@ const TOTAL_CELLS = 14;
 
 const BAD_CELLS = 4;
 
+/*
+ * Cell ไม่จำเป็นต้อง update
+ * เท่ากับ Refresh Rate ของเกม
+ *
+ * จอ 180Hz = เดิม React render 180 ครั้ง/วินาที
+ * จำกัดเหลือ 30 ครั้ง/วินาที
+ */
+const CELL_ANIMATION_FPS = 30;
+
+const CELL_FRAME_INTERVAL = 1000 / CELL_ANIMATION_FPS;
+
 // ========================================
 // Helpers
 // ========================================
 
-function random(
-    min: number,
-    max: number,
-) {
-    return (
-        min +
-        Math.random() *
-            (max - min)
-    );
+function random(min: number, max: number) {
+  return min + Math.random() * (max - min);
 }
 
-function shuffle<T>(
-    source: T[],
-) {
-    const result = [
-        ...source,
-    ];
+function shuffle<T>(source: T[]) {
+  const result = [...source];
 
-    for (
-        let i =
-            result.length - 1;
-        i > 0;
-        i--
-    ) {
-        const j =
-            Math.floor(
-                Math.random() *
-                    (i + 1),
-            );
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
 
-        [
-            result[i],
-            result[j],
-        ] = [
-            result[j],
-            result[i],
-        ];
-    }
+    [result[i], result[j]] = [result[j], result[i]];
+  }
 
-    return result;
+  return result;
 }
 
 // ========================================
 // Create Level
 // ========================================
 
-function createLevel():
-    CellData[] {
+function createLevel(): CellData[] {
+  /*
+   * true = เซลล์ผิดปกติ
+   * false = เซลล์ปกติ
+   */
+  const badFlags = shuffle([
+    ...Array(BAD_CELLS).fill(true),
+
+    ...Array(TOTAL_CELLS - BAD_CELLS).fill(false),
+  ]) as boolean[];
+
+  return badFlags.map((bad, index) => {
     /*
-     * true = เซลล์ผิดปกติ
-     * false = เซลล์ปกติ
+     * radius ใช้ coordinate
+     * แบบ normalized 0-1
      */
-    const badFlags =
-        shuffle([
-            ...Array(
-                BAD_CELLS,
-            ).fill(true),
+    const radius = random(0.055, 0.077);
 
-            ...Array(
-                TOTAL_CELLS -
-                    BAD_CELLS,
-            ).fill(false),
-        ]) as boolean[];
+    /*
+     * สุ่มตำแหน่งภายในวงกลม
+     */
+    const angle = random(0, Math.PI * 2);
 
-    return badFlags.map(
-        (
-            bad,
-            index,
-        ) => {
-            /*
-             * radius ใช้ coordinate
-             * แบบ normalized 0-1
-             */
-            const radius =
-                random(
-                    0.055,
-                    0.077,
-                );
+    const distance = Math.sqrt(Math.random()) * (0.5 - radius - 0.025);
 
-            /*
-             * สุ่มตำแหน่งภายในวงกลม
-             */
-            const angle =
-                random(
-                    0,
-                    Math.PI *
-                        2,
-                );
+    const x = 0.5 + Math.cos(angle) * distance;
 
-            const distance =
-                Math.sqrt(
-                    Math.random(),
-                ) *
-                (0.5 -
-                    radius -
-                    0.025);
+    const y = 0.5 + Math.sin(angle) * distance;
 
-            const x =
-                0.5 +
-                Math.cos(
-                    angle,
-                ) *
-                    distance;
+    /*
+     * ความเร็ว
+     */
+    const movementAngle = random(0, Math.PI * 2);
 
-            const y =
-                0.5 +
-                Math.sin(
-                    angle,
-                ) *
-                    distance;
+    const speed = random(0.025, 0.05);
 
-            /*
-             * ความเร็ว
-             */
-            const movementAngle =
-                random(
-                    0,
-                    Math.PI *
-                        2,
-                );
+    return {
+      id: index,
 
-            const speed =
-                random(
-                    0.025,
-                    0.05,
-                );
+      x,
+      y,
 
-            return {
-                id: index,
+      radius,
 
-                x,
-                y,
+      vx: Math.cos(movementAngle) * speed,
 
-                radius,
+      vy: Math.sin(movementAngle) * speed,
 
-                vx:
-                    Math.cos(
-                        movementAngle,
-                    ) *
-                    speed,
+      bad,
 
-                vy:
-                    Math.sin(
-                        movementAngle,
-                    ) *
-                    speed,
+      found: false,
 
-                bad,
+      phase: random(0, Math.PI * 2),
 
-                found: false,
-
-                phase:
-                    random(
-                        0,
-                        Math.PI *
-                            2,
-                    ),
-
-                wobble: 0,
-            };
-        },
-    );
+      wobble: 0,
+    };
+  });
 }
 
 // ========================================
 // Cell Puzzle
 // ========================================
 
-export default function CellPuzzle({
-    onComplete,
-    onClose,
-}: CellPuzzleProps) {
-    // ========================================
-    // State
-    // ========================================
-
-    const [
-        cells,
-        setCells,
-    ] =
-        useState<
-            CellData[]
-        >([]);
-
-    const [
-        foundCount,
-        setFoundCount,
-    ] =
-        useState(0);
-
-    const [
-        hintActive,
-        setHintActive,
-    ] =
-        useState(false);
-
-    const [
-        win,
-        setWin,
-    ] =
-        useState(false);
-
-    const [
-        ripples,
-        setRipples,
-    ] =
-        useState<
-            RippleData[]
-        >([]);
-
-    // ========================================
-    // Refs
-    // ========================================
-
-    const lastFrameRef =
-        useRef(0);
-
-    const foundIdsRef =
-        useRef<
-            Set<number>
-        >(
-            new Set(),
-        );
-
-    const timerRefs =
-        useRef<
-            Set<number>
-        >(
-            new Set(),
-        );
-
-    const rippleIdRef =
-        useRef(0);
-
-    // ========================================
-    // Timer Helper
-    // ========================================
-
-    const addTimer =
-        useCallback(
-            (
-                callback:
-                    () => void,
-
-                delay: number,
-            ) => {
-                const id =
-                    window.setTimeout(
-                        () => {
-                            timerRefs.current.delete(
-                                id,
-                            );
-
-                            callback();
-                        },
-
-                        delay,
-                    );
-
-                timerRefs.current.add(
-                    id,
-                );
-
-                return id;
-            },
-            [],
-        );
-
-    const clearTimers =
-        useCallback(() => {
-            timerRefs.current.forEach(
-                (timer) => {
-                    window.clearTimeout(
-                        timer,
-                    );
-                },
-            );
-
-            timerRefs.current.clear();
-        }, []);
-
-    // ========================================
-    // Reset
-    // ========================================
-
-    const resetPuzzle =
-        useCallback(() => {
-            clearTimers();
-
-            foundIdsRef.current.clear();
-
-            setCells(
-                createLevel(),
-            );
-
-            setFoundCount(
-                0,
-            );
-
-            setHintActive(
-                false,
-            );
-
-            setWin(
-                false,
-            );
-
-            setRipples(
-                [],
-            );
-
-            lastFrameRef.current =
-                performance.now();
-        }, [
-            clearTimers,
-        ]);
-
-    // ========================================
-    // Start
-    // ========================================
-
-    useEffect(() => {
-        resetPuzzle();
-
-        return () => {
-            clearTimers();
-        };
-    }, [
-        resetPuzzle,
-        clearTimers,
-    ]);
-
-    // ========================================
-    // Cell Movement
-    // ========================================
-
-    useEffect(() => {
-        if (win) {
-            return;
-        }
-
-        let frameId = 0;
-
-        function update(
-            time: number,
-        ) {
-            const previousTime =
-                lastFrameRef.current ||
-                time;
-
-            const delta =
-                Math.min(
-                    (time -
-                        previousTime) /
-                        1000,
-
-                    0.05,
-                );
-
-            lastFrameRef.current =
-                time;
-
-            setCells(
-                (current) =>
-                    current.map(
-                        (cell) => {
-                            if (
-                                cell.found
-                            ) {
-                                return cell;
-                            }
-
-                            let x =
-                                cell.x +
-                                cell.vx *
-                                    delta;
-
-                            let y =
-                                cell.y +
-                                cell.vy *
-                                    delta;
-
-                            let vx =
-                                cell.vx;
-
-                            let vy =
-                                cell.vy;
-
-                            /*
-                             * ตำแหน่งจากจุดกึ่งกลาง
-                             */
-                            const dx =
-                                x -
-                                0.5;
-
-                            const dy =
-                                y -
-                                0.5;
-
-                            const distance =
-                                Math.hypot(
-                                    dx,
-                                    dy,
-                                );
-
-                            /*
-                             * ขอบเขตที่ Cell
-                             * สามารถอยู่ได้
-                             */
-                            const limit =
-                                0.5 -
-                                cell.radius -
-                                0.015;
-
-                            /*
-                             * ชนขอบกล้อง
-                             */
-                            if (
-                                distance >
-                                limit
-                            ) {
-                                const safeDistance =
-                                    Math.max(
-                                        distance,
-                                        0.0001,
-                                    );
-
-                                const nx =
-                                    dx /
-                                    safeDistance;
-
-                                const ny =
-                                    dy /
-                                    safeDistance;
-
-                                /*
-                                 * Reflection
-                                 */
-                                const dot =
-                                    vx *
-                                        nx +
-                                    vy *
-                                        ny;
-
-                                vx -=
-                                    2 *
-                                    dot *
-                                    nx;
-
-                                vy -=
-                                    2 *
-                                    dot *
-                                    ny;
-
-                                /*
-                                 * บังคับกลับเข้า
-                                 * วงกลม
-                                 */
-                                x =
-                                    0.5 +
-                                    nx *
-                                        limit;
-
-                                y =
-                                    0.5 +
-                                    ny *
-                                        limit;
-                            }
-
-                            /*
-                             * เซลล์ผิดปกติ
-                             * ขยับเบี้ยว ๆ เพิ่ม
-                             */
-                            const wobble =
-                                Math.sin(
-                                    time *
-                                        (cell.bad
-                                            ? 0.003
-                                            : 0.0015) +
-                                        cell.phase,
-                                ) *
-                                (cell.bad
-                                    ? 5
-                                    : 1.2);
-
-                            return {
-                                ...cell,
-
-                                x,
-                                y,
-
-                                vx,
-                                vy,
-
-                                wobble,
-                            };
-                        },
-                    ),
-            );
-
-            frameId =
-                requestAnimationFrame(
-                    update,
-                );
-        }
-
-        frameId =
-            requestAnimationFrame(
-                update,
-            );
-
-        return () => {
-            cancelAnimationFrame(
-                frameId,
-            );
-        };
-    }, [
-        win,
-    ]);
-
-    // ========================================
-    // Success
-    // ========================================
-
-    function showWin() {
-        setWin(true);
-
-        /*
-         * ขึ้น Success ก่อน
-         * แล้วให้ GameScene จัดการต่อ
-         */
-        addTimer(
-            () => {
-                onComplete();
-            },
-
-            1400,
-        );
+export default function CellPuzzle({ onComplete, onClose }: CellPuzzleProps) {
+  // ========================================
+  // State
+  // ========================================
+
+  const [cells, setCells] = useState<CellData[]>([]);
+
+  const [foundCount, setFoundCount] = useState(0);
+
+  const [hintActive, setHintActive] = useState(false);
+
+  const [win, setWin] = useState(false);
+
+  const [ripples, setRipples] = useState<RippleData[]>([]);
+
+  // ========================================
+  // Refs
+  // ========================================
+
+  const lastFrameRef = useRef(0);
+
+  const foundIdsRef = useRef<Set<number>>(new Set());
+
+  const timerRefs = useRef<Set<number>>(new Set());
+
+  const rippleIdRef = useRef(0);
+
+  // ========================================
+  // Timer Helper
+  // ========================================
+
+  const addTimer = useCallback(
+    (
+      callback: () => void,
+
+      delay: number,
+    ) => {
+      const id = window.setTimeout(
+        () => {
+          timerRefs.current.delete(id);
+
+          callback();
+        },
+
+        delay,
+      );
+
+      timerRefs.current.add(id);
+
+      return id;
+    },
+    [],
+  );
+
+  const clearTimers = useCallback(() => {
+    timerRefs.current.forEach((timer) => {
+      window.clearTimeout(timer);
+    });
+
+    timerRefs.current.clear();
+  }, []);
+
+  // ========================================
+  // Reset
+  // ========================================
+
+  const resetPuzzle = useCallback(() => {
+    clearTimers();
+
+    foundIdsRef.current.clear();
+
+    setCells(createLevel());
+
+    setFoundCount(0);
+
+    setHintActive(false);
+
+    setWin(false);
+
+    setRipples([]);
+
+    lastFrameRef.current = performance.now();
+  }, [clearTimers]);
+
+  // ========================================
+  // Start
+  // ========================================
+
+  useEffect(() => {
+    resetPuzzle();
+
+    return () => {
+      clearTimers();
+    };
+  }, [resetPuzzle, clearTimers]);
+
+  // ========================================
+  // Cell Movement
+  // ========================================
+
+  useEffect(() => {
+    if (win) {
+      return;
     }
 
-    // ========================================
-    // Cell Click
-    // ========================================
+    let frameId = 0;
 
-    function handleCellClick(
-        cell: CellData,
-    ) {
-        if (
-            win ||
-            cell.found
-        ) {
-            return;
-        }
+    function update(time: number) {
+      const previousTime = lastFrameRef.current || time;
 
-        // =====================================
-        // Normal Cell
-        // =====================================
+      const elapsed = time - previousTime;
 
-        if (!cell.bad) {
+      /*
+       * requestAnimationFrame
+       * ยังทำงานตาม Refresh Rate
+       *
+       * แต่ React State จะ update
+       * แค่ประมาณ 30 FPS
+       */
+      if (elapsed < CELL_FRAME_INTERVAL) {
+        frameId = requestAnimationFrame(update);
+
+        return;
+      }
+
+      const delta = Math.min(elapsed / 1000, 0.05);
+
+      lastFrameRef.current = time;
+
+      setCells((current) =>
+        current.map((cell) => {
+          if (cell.found) {
+            return cell;
+          }
+
+          let x = cell.x + cell.vx * delta;
+
+          let y = cell.y + cell.vy * delta;
+
+          let vx = cell.vx;
+
+          let vy = cell.vy;
+
+          /*
+           * ตำแหน่งจากจุดกึ่งกลาง
+           */
+          const dx = x - 0.5;
+
+          const dy = y - 0.5;
+
+          const distance = Math.hypot(dx, dy);
+
+          /*
+           * ขอบเขตที่ Cell
+           * สามารถอยู่ได้
+           */
+          const limit = 0.5 - cell.radius - 0.015;
+
+          /*
+           * ชนขอบกล้อง
+           */
+          if (distance > limit) {
+            const safeDistance = Math.max(distance, 0.0001);
+
+            const nx = dx / safeDistance;
+
+            const ny = dy / safeDistance;
+
             /*
-             * ไม่มี penalty
-             * แค่ ripple บอกว่าเลือกแล้ว
+             * Reflection
              */
+            const dot = vx * nx + vy * ny;
 
-            rippleIdRef.current +=
-                1;
+            vx -= 2 * dot * nx;
 
-            const rippleId =
-                rippleIdRef.current;
+            vy -= 2 * dot * ny;
 
-            setRipples(
-                (current) => [
-                    ...current,
+            /*
+             * บังคับกลับเข้า
+             * วงกลม
+             */
+            x = 0.5 + nx * limit;
 
-                    {
-                        id:
-                            rippleId,
+            y = 0.5 + ny * limit;
+          }
 
-                        x:
-                            cell.x,
+          /*
+           * เซลล์ผิดปกติ
+           * ขยับเบี้ยว ๆ เพิ่ม
+           */
+          const wobble =
+            Math.sin(time * (cell.bad ? 0.003 : 0.0015) + cell.phase) *
+            (cell.bad ? 5 : 1.2);
 
-                        y:
-                            cell.y,
+          return {
+            ...cell,
 
-                        radius:
-                            cell.radius,
-                    },
-                ],
-            );
+            x,
+            y,
 
-            addTimer(
-                () => {
-                    setRipples(
-                        (
-                            current,
-                        ) =>
-                            current.filter(
-                                (
-                                    ripple,
-                                ) =>
-                                    ripple.id !==
-                                    rippleId,
-                            ),
-                    );
-                },
+            vx,
+            vy,
 
-                500,
-            );
+            wobble,
+          };
+        }),
+      );
 
-            return;
-        }
-
-        // =====================================
-        // Abnormal Cell
-        // =====================================
-
-        if (
-            foundIdsRef.current.has(
-                cell.id,
-            )
-        ) {
-            return;
-        }
-
-        foundIdsRef.current.add(
-            cell.id,
-        );
-
-        setCells(
-            (current) =>
-                current.map(
-                    (
-                        currentCell,
-                    ) =>
-                        currentCell.id ===
-                        cell.id
-                            ? {
-                                  ...currentCell,
-
-                                  found:
-                                      true,
-                              }
-                            : currentCell,
-                ),
-        );
-
-        setFoundCount(
-            (current) => {
-                const next =
-                    current +
-                    1;
-
-                /*
-                 * เจอครบ 4 ตัว
-                 */
-                if (
-                    next ===
-                    BAD_CELLS
-                ) {
-                    addTimer(
-                        showWin,
-                        450,
-                    );
-                }
-
-                return next;
-            },
-        );
+      frameId = requestAnimationFrame(update);
     }
 
-    // ========================================
-    // Hint
-    // ========================================
+    frameId = requestAnimationFrame(update);
 
-    function showHint() {
-        if (
-            hintActive ||
-            win
-        ) {
-            return;
-        }
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [win]);
 
-        setHintActive(
-            true,
-        );
+  // ========================================
+  // Success
+  // ========================================
 
-        addTimer(
-            () => {
-                setHintActive(
-                    false,
-                );
-            },
+  function showWin() {
+    setWin(true);
 
-            900,
-        );
+    /*
+     * ขึ้น Success ก่อน
+     * แล้วให้ GameScene จัดการต่อ
+     */
+    addTimer(
+      () => {
+        onComplete();
+      },
+
+      1400,
+    );
+  }
+
+  // ========================================
+  // Cell Click
+  // ========================================
+
+  function handleCellClick(cell: CellData) {
+    if (win || cell.found) {
+      return;
     }
 
-    // ========================================
-    // Render
-    // ========================================
+    // =====================================
+    // Normal Cell
+    // =====================================
 
-    return (
-        <div
-            className="
-                fixed
-                inset-0
-                z-9000
-                flex
-                items-center
-                justify-center
-                overflow-hidden
-                bg-black/55
-                p-6
-                backdrop-blur-[2px]
-            "
-        >
-            {/* =================================
+    if (!cell.bad) {
+      /*
+       * ไม่มี penalty
+       * แค่ ripple บอกว่าเลือกแล้ว
+       */
+
+      rippleIdRef.current += 1;
+
+      const rippleId = rippleIdRef.current;
+
+      setRipples((current) => [
+        ...current,
+
+        {
+          id: rippleId,
+
+          x: cell.x,
+
+          y: cell.y,
+
+          radius: cell.radius,
+        },
+      ]);
+
+      addTimer(
+        () => {
+          setRipples((current) =>
+            current.filter((ripple) => ripple.id !== rippleId),
+          );
+        },
+
+        500,
+      );
+
+      return;
+    }
+
+    // =====================================
+    // Abnormal Cell
+    // =====================================
+
+    if (foundIdsRef.current.has(cell.id)) {
+      return;
+    }
+
+    foundIdsRef.current.add(cell.id);
+
+    setCells((current) =>
+      current.map((currentCell) =>
+        currentCell.id === cell.id
+          ? {
+              ...currentCell,
+
+              found: true,
+            }
+          : currentCell,
+      ),
+    );
+
+    setFoundCount((current) => {
+      const next = current + 1;
+
+      /*
+       * เจอครบ 4 ตัว
+       */
+      if (next === BAD_CELLS) {
+        addTimer(showWin, 450);
+      }
+
+      return next;
+    });
+  }
+
+  // ========================================
+  // Hint
+  // ========================================
+
+  function showHint() {
+    if (hintActive || win) {
+      return;
+    }
+
+    setHintActive(true);
+
+    addTimer(
+      () => {
+        setHintActive(false);
+      },
+
+      900,
+    );
+  }
+
+  // ========================================
+  // Render
+  // ========================================
+
+  return (
+    <div
+      className="
+    fixed
+    inset-0
+    z-9000
+    flex
+    items-center
+    justify-center
+    overflow-hidden
+    bg-black/80
+    p-6
+"
+    >
+      {/* =================================
                 Panel
             ================================= */}
 
-            <div
-                className="
+      <div
+        className="
                     relative
                     w-full
                     max-w-130
@@ -792,47 +527,43 @@ export default function CellPuzzle({
                     text-white
                     shadow-[0_30px_100px_rgba(0,0,0,0.75)]
                 "
-            >
-                {/* Background Glow */}
+      >
+        {/* Background Glow */}
 
-                <div
-                    className="
-                        pointer-events-none
-                        absolute
-                        -left-24
-                        -top-24
-                        h-72
-                        w-72
-                        rounded-full
-                        bg-cyan-500/10
-                        blur-3xl
-                    "
-                />
+        <div
+          className="
+        pointer-events-none
+        absolute
+        -left-24
+        -top-24
+        h-72
+        w-72
+        rounded-full
+        bg-[radial-gradient(circle,rgba(6,182,212,0.08)_0%,transparent_70%)]
+    "
+        />
 
-                <div
-                    className="
-                        pointer-events-none
-                        absolute
-                        -bottom-24
-                        -right-20
-                        h-72
-                        w-72
-                        rounded-full
-                        bg-red-500/10
-                        blur-3xl
-                    "
-                />
+        <div
+          className="
+        pointer-events-none
+        absolute
+        -bottom-24
+        -right-20
+        h-72
+        w-72
+        rounded-full
+        bg-[radial-gradient(circle,rgba(239,68,68,0.07)_0%,transparent_70%)]
+    "
+        />
 
-                {/* =================================
+        {/* =================================
                     Close
                 ================================= */}
 
-                <button
-                    type="button"
-                    onClick={
-                        onClose
-                    }
-                    className="
+        <button
+          type="button"
+          onClick={onClose}
+          className="
                         absolute
                         right-4
                         top-4
@@ -852,74 +583,72 @@ export default function CellPuzzle({
                         hover:bg-white/10
                         hover:text-white
                     "
-                    aria-label="ปิด Cell Puzzle"
-                >
-                    ×
-                </button>
+          aria-label="ปิด Cell Puzzle"
+        >
+          ×
+        </button>
 
-                {/* =================================
+        {/* =================================
                     Header
                 ================================= */}
 
-                <div
-                    className="
+        <div
+          className="
                         relative
                         z-10
                         text-center
                     "
-                >
-                    <div
-                        className="
+        >
+          <div
+            className="
                             text-[10px]
                             font-semibold
                             uppercase
                             tracking-[0.35em]
                             text-cyan-300/60
                         "
-                    >
-                        LAB MISSION ·
-                        PUZZLE 2
-                    </div>
+          >
+            LAB MISSION · PUZZLE 2
+          </div>
 
-                    <h2
-                        className="
+          <h2
+            className="
                             mt-1
                             text-2xl
                             font-bold
                             tracking-wide
                             text-cyan-100
                         "
-                    >
-                        หา Cell ผิดปกติ
-                    </h2>
+          >
+            หา Cell ผิดปกติ
+          </h2>
 
-                    <p
-                        className="
+          <p
+            className="
                             mt-1
                             text-xs
                             text-slate-400
                         "
-                    >
-                        ส่องกล้องหาเซลล์ที่รูปร่าง
-                        ผิดปกติ แล้วเลือกให้ครบ
-                    </p>
-                </div>
+          >
+            ส่องกล้องหาเซลล์ที่รูปร่าง ผิดปกติ แล้วเลือกให้ครบ
+          </p>
+        </div>
 
-                {/* =================================
+        {/* =================================
                     Counter
                 ================================= */}
 
-                <div
-                    className="
+        <div
+          className="
                         relative
                         z-10
                         my-3
                         flex
                         justify-center
                     "
-                >
-                    <div
-                        className="
+        >
+          <div
+            className="
                             rounded-full
                             border
                             border-emerald-300/25
@@ -930,48 +659,40 @@ export default function CellPuzzle({
                             font-semibold
                             text-emerald-200
                         "
-                    >
-                        พบแล้ว{" "}
-
-                        <span
-                            className="
+          >
+            พบแล้ว{" "}
+            <span
+              className="
                                 text-sm
                                 font-black
                                 text-white
                             "
-                        >
-                            {
-                                foundCount
-                            }
-                        </span>
+            >
+              {foundCount}
+            </span>{" "}
+            / {BAD_CELLS}
+          </div>
+        </div>
 
-                        {" "}/{" "}
-
-                        {
-                            BAD_CELLS
-                        }
-                    </div>
-                </div>
-
-                {/* =================================
+        {/* =================================
                     Microscope Holder
 
                     ขนาดย่อตามความสูงจอ
                     เพื่อไม่เกิด Scroll
                 ================================= */}
 
-                <div
-                    className="
+        <div
+          className="
                         relative
                         z-10
                         flex
                         justify-center
                     "
-                >
-                    {/* Outer microscope ring */}
+        >
+          {/* Outer microscope ring */}
 
-                    <div
-                        className="
+          <div
+            className="
                             relative
                             aspect-square
                             w-[min(52vh,380px)]
@@ -981,11 +702,11 @@ export default function CellPuzzle({
                             p-3
                             shadow-[0_20px_55px_rgba(0,0,0,0.65),0_0_0_1px_rgba(125,211,252,0.15)]
                         "
-                    >
-                        {/* Fake metal ring */}
+          >
+            {/* Fake metal ring */}
 
-                        <div
-                            className="
+            <div
+              className="
                                 pointer-events-none
                                 absolute
                                 inset-0
@@ -994,14 +715,14 @@ export default function CellPuzzle({
                                 border-slate-800
                                 shadow-[inset_0_3px_8px_rgba(255,255,255,0.08),inset_0_-8px_16px_rgba(0,0,0,0.55)]
                             "
-                        />
+            />
 
-                        {/* =================================
+            {/* =================================
                             Scope
                         ================================= */}
 
-                        <div
-                            className="
+            <div
+              className="
                                 relative
                                 h-full
                                 w-full
@@ -1012,31 +733,30 @@ export default function CellPuzzle({
                                 bg-[radial-gradient(circle_at_38%_30%,#173d75_0%,#0b234d_45%,#06142f_72%,#020817_100%)]
                                 shadow-[inset_0_0_70px_rgba(0,0,0,0.75),0_0_25px_rgba(59,130,246,0.18)]
                             "
-                        >
-                            {/* =============================
+            >
+              {/* =============================
                                 Microscope light
                             ============================= */}
 
-                            <div
-                                className="
-                                    pointer-events-none
-                                    absolute
-                                    left-[16%]
-                                    top-[10%]
-                                    h-[45%]
-                                    w-[45%]
-                                    rounded-full
-                                    bg-cyan-200/10
-                                    blur-2xl
-                                "
-                            />
+              <div
+                className="
+    pointer-events-none
+    absolute
+    left-[16%]
+    top-[10%]
+    h-[45%]
+    w-[45%]
+    rounded-full
+    bg-[radial-gradient(circle,rgba(165,243,252,0.12)_0%,rgba(165,243,252,0.04)_45%,transparent_72%)]
+"
+              />
 
-                            {/* =============================
+              {/* =============================
                                 Fake floating particles
                             ============================= */}
 
-                            <div
-                                className="
+              <div
+                className="
                                     pointer-events-none
                                     absolute
                                     left-[26%]
@@ -1047,48 +767,31 @@ export default function CellPuzzle({
                                     bg-cyan-100/50
                                     shadow-[40px_40px_0_rgba(207,250,254,0.25),100px_10px_0_rgba(207,250,254,0.2),150px_90px_0_rgba(207,250,254,0.2),30px_160px_0_rgba(207,250,254,0.18),180px_150px_0_rgba(207,250,254,0.18)]
                                 "
-                            />
+              />
 
-                            {/* =============================
+              {/* =============================
                                 Cells
                             ============================= */}
 
-                            {cells.map(
-                                (
-                                    cell,
-                                ) => (
-                                    <Cell
-                                        key={
-                                            cell.id
-                                        }
-                                        cell={
-                                            cell
-                                        }
-                                        hintActive={
-                                            hintActive
-                                        }
-                                        onClick={() => {
-                                            handleCellClick(
-                                                cell,
-                                            );
-                                        }}
-                                    />
-                                ),
-                            )}
+              {cells.map((cell) => (
+                <Cell
+                  key={cell.id}
+                  cell={cell}
+                  hintActive={hintActive}
+                  onClick={() => {
+                    handleCellClick(cell);
+                  }}
+                />
+              ))}
 
-                            {/* =============================
+              {/* =============================
                                 Normal Cell Ripple
                             ============================= */}
 
-                            {ripples.map(
-                                (
-                                    ripple,
-                                ) => (
-                                    <div
-                                        key={
-                                            ripple.id
-                                        }
-                                        className="
+              {ripples.map((ripple) => (
+                <div
+                  key={ripple.id}
+                  className="
                                             pointer-events-none
                                             absolute
                                             animate-ping
@@ -1096,43 +799,24 @@ export default function CellPuzzle({
                                             border-2
                                             border-sky-200/70
                                         "
-                                        style={{
-                                            left: `${
-                                                (
-                                                    ripple.x -
-                                                    ripple.radius
-                                                ) *
-                                                100
-                                            }%`,
+                  style={{
+                    left: `${(ripple.x - ripple.radius) * 100}%`,
 
-                                            top: `${
-                                                (
-                                                    ripple.y -
-                                                    ripple.radius
-                                                ) *
-                                                100
-                                            }%`,
+                    top: `${(ripple.y - ripple.radius) * 100}%`,
 
-                                            width: `${
-                                                ripple.radius *
-                                                200
-                                            }%`,
+                    width: `${ripple.radius * 200}%`,
 
-                                            height: `${
-                                                ripple.radius *
-                                                200
-                                            }%`,
-                                        }}
-                                    />
-                                ),
-                            )}
+                    height: `${ripple.radius * 200}%`,
+                  }}
+                />
+              ))}
 
-                            {/* =============================
+              {/* =============================
                                 Crosshair
                             ============================= */}
 
-                            <div
-                                className="
+              <div
+                className="
                                     pointer-events-none
                                     absolute
                                     left-1/2
@@ -1142,10 +826,10 @@ export default function CellPuzzle({
                                     -translate-x-1/2
                                     bg-sky-100/10
                                 "
-                            />
+              />
 
-                            <div
-                                className="
+              <div
+                className="
                                     pointer-events-none
                                     absolute
                                     left-[8%]
@@ -1155,14 +839,14 @@ export default function CellPuzzle({
                                     -translate-y-1/2
                                     bg-sky-100/10
                                 "
-                            />
+              />
 
-                            {/* =============================
+              {/* =============================
                                 Center Reticle
                             ============================= */}
 
-                            <div
-                                className="
+              <div
+                className="
                                     pointer-events-none
                                     absolute
                                     left-1/2
@@ -1175,31 +859,31 @@ export default function CellPuzzle({
                                     border
                                     border-sky-100/10
                                 "
-                            />
+              />
 
-                            {/* =============================
+              {/* =============================
                                 Vignette
                             ============================= */}
 
-                            <div
-                                className="
+              <div
+                className="
                                     pointer-events-none
                                     absolute
                                     inset-0
                                     rounded-full
                                     shadow-[inset_0_0_75px_35px_rgba(0,0,0,0.55)]
                                 "
-                            />
-                        </div>
-                    </div>
-                </div>
+              />
+            </div>
+          </div>
+        </div>
 
-                {/* =================================
+        {/* =================================
                     Legend
                 ================================= */}
 
-                <div
-                    className="
+        <div
+          className="
                         relative
                         z-10
                         mt-3
@@ -1209,54 +893,52 @@ export default function CellPuzzle({
                         text-[10px]
                         text-slate-400
                     "
-                >
-                    <div
-                        className="
+        >
+          <div
+            className="
                             flex
                             items-center
                             gap-1.5
                         "
-                    >
-                        <span
-                            className="
+          >
+            <span
+              className="
                                 h-2
                                 w-2
                                 rounded-full
                                 bg-emerald-300
                                 shadow-[0_0_8px_rgba(110,231,183,0.7)]
                             "
-                        />
+            />
+            Cell ปกติ
+          </div>
 
-                        Cell ปกติ
-                    </div>
-
-                    <div
-                        className="
+          <div
+            className="
                             flex
                             items-center
                             gap-1.5
                         "
-                    >
-                        <span
-                            className="
+          >
+            <span
+              className="
                                 h-2
                                 w-2
                                 rounded-[40%_60%_55%_45%]
                                 bg-rose-400
                                 shadow-[0_0_8px_rgba(251,113,133,0.7)]
                             "
-                        />
+            />
+            Cell ผิดปกติ
+          </div>
+        </div>
 
-                        Cell ผิดปกติ
-                    </div>
-                </div>
-
-                {/* =================================
+        {/* =================================
                     Controls
                 ================================= */}
 
-                <div
-                    className="
+        <div
+          className="
                         relative
                         z-10
                         mt-3
@@ -1264,16 +946,12 @@ export default function CellPuzzle({
                         justify-center
                         gap-2
                     "
-                >
-                    <button
-                        type="button"
-                        onClick={
-                            showHint
-                        }
-                        disabled={
-                            hintActive
-                        }
-                        className="
+        >
+          <button
+            type="button"
+            onClick={showHint}
+            disabled={hintActive}
+            className="
                             rounded-lg
                             border
                             border-white/10
@@ -1288,16 +966,14 @@ export default function CellPuzzle({
                             hover:text-white
                             disabled:opacity-40
                         "
-                    >
-                        💡 ใบ้
-                    </button>
+          >
+            💡 ใบ้
+          </button>
 
-                    <button
-                        type="button"
-                        onClick={
-                            resetPuzzle
-                        }
-                        className="
+          <button
+            type="button"
+            onClick={resetPuzzle}
+            className="
                             rounded-lg
                             border
                             border-white/10
@@ -1311,21 +987,21 @@ export default function CellPuzzle({
                             hover:bg-white/10
                             hover:text-white
                         "
-                    >
-                        ↻ เริ่มใหม่
-                    </button>
-                </div>
+          >
+            ↻ เริ่มใหม่
+          </button>
+        </div>
 
-                {/* =================================
+        {/* =================================
                     Success Overlay
 
                     คลุมแค่ Panel
                     ไม่คลุมทั้ง Game
                 ================================= */}
 
-                {win && (
-                    <div
-                        className="
+        {win && (
+          <div
+            className="
                             absolute
                             inset-0
                             z-100
@@ -1336,9 +1012,9 @@ export default function CellPuzzle({
                             bg-slate-950/85
                             backdrop-blur-md
                         "
-                    >
-                        <div
-                            className="
+          >
+            <div
+              className="
                                 mx-6
                                 w-full
                                 max-w-xs
@@ -1350,40 +1026,39 @@ export default function CellPuzzle({
                                 text-center
                                 shadow-2xl
                             "
-                        >
-                            <div
-                                className="
+            >
+              <div
+                className="
                                     animate-bounce
                                     text-4xl
                                 "
-                            >
-                                🔬
-                            </div>
+              >
+                🔬
+              </div>
 
-                            <h3
-                                className="
+              <h3
+                className="
                                     mt-3
                                     text-xl
                                     font-bold
                                     text-emerald-200
                                 "
-                            >
-                                ตรวจพบครบแล้ว!
-                            </h3>
+              >
+                ตรวจพบครบแล้ว!
+              </h3>
 
-                            <p
-                                className="
+              <p
+                className="
                                     mt-2
                                     text-xs
                                     text-slate-400
                                 "
-                            >
-                                แยกเซลล์ที่มีรูปร่างผิดปกติ
-                                ได้ครบทั้งหมด
-                            </p>
+              >
+                แยกเซลล์ที่มีรูปร่างผิดปกติ ได้ครบทั้งหมด
+              </p>
 
-                            <div
-                                className="
+              <div
+                className="
                                     mx-auto
                                     mt-5
                                     h-1
@@ -1392,13 +1067,13 @@ export default function CellPuzzle({
                                     rounded-full
                                     bg-emerald-400
                                 "
-                            />
-                        </div>
-                    </div>
-                )}
+              />
             </div>
-        </div>
-    );
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ========================================
@@ -1406,51 +1081,38 @@ export default function CellPuzzle({
 // ========================================
 
 type CellProps = {
-    cell: CellData;
+  cell: CellData;
 
-    hintActive: boolean;
+  hintActive: boolean;
 
-    onClick: () => void;
+  onClick: () => void;
 };
 
-function Cell({
-    cell,
-    hintActive,
-    onClick,
-}: CellProps) {
-    const diameter =
-        cell.radius *
-        200;
+function Cell({ cell, hintActive, onClick }: CellProps) {
+  const diameter = cell.radius * 200;
 
-    const hint =
-        hintActive &&
-        cell.bad &&
-        !cell.found;
+  const hint = hintActive && cell.bad && !cell.found;
 
-    // ========================================
-    // Good Cell
-    // ========================================
+  // ========================================
+  // Good Cell
+  // ========================================
 
-    const goodBackground =
-        "radial-gradient(circle at 30% 25%, #e2fff9 0%, #8af5df 16%, #4fe3c8 40%, #23ad9d 68%, #0c5e58 100%)";
+  const goodBackground =
+    "radial-gradient(circle at 30% 25%, #e2fff9 0%, #8af5df 16%, #4fe3c8 40%, #23ad9d 68%, #0c5e58 100%)";
 
-    // ========================================
-    // Bad Cell
-    // ========================================
+  // ========================================
+  // Bad Cell
+  // ========================================
 
-    const badBackground =
-        "radial-gradient(circle at 28% 24%, #dcfff8 0%, #76ecd6 15%, #42cdb6 40%, #238d81 67%, #0b4f4a 100%)";
+  const badBackground =
+    "radial-gradient(circle at 28% 24%, #dcfff8 0%, #76ecd6 15%, #42cdb6 40%, #238d81 67%, #0b4f4a 100%)";
 
-    return (
-        <button
-            type="button"
-            onClick={
-                onClick
-            }
-            disabled={
-                cell.found
-            }
-            className={`
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={cell.found}
+      className={`
                 absolute
                 flex
                 touch-none
@@ -1461,85 +1123,56 @@ function Cell({
                 outline-none
                 transition-[opacity,filter]
                 duration-500
+                ${cell.bad ? "border-rose-200/15" : "border-cyan-100/20"}
                 ${
-                    cell.bad
-                        ? "border-rose-200/15"
-                        : "border-cyan-100/20"
+                  cell.found
+                    ? "pointer-events-none opacity-0"
+                    : "cursor-crosshair opacity-100"
                 }
-                ${
-                    cell.found
-                        ? "pointer-events-none opacity-0"
-                        : "cursor-crosshair opacity-100"
-                }
-                ${
-                    hint
-                        ? "z-20 brightness-125"
-                        : ""
-                }
+                ${hint ? "z-20 brightness-125" : ""}
             `}
-            style={{
-                left: `${
-                    (cell.x -
-                        cell.radius) *
-                    100
-                }%`,
+      style={{
+        left: `${(cell.x - cell.radius) * 100}%`,
 
-                top: `${
-                    (cell.y -
-                        cell.radius) *
-                    100
-                }%`,
+        top: `${(cell.y - cell.radius) * 100}%`,
 
-                width:
-                    `${diameter}%`,
+        width: `${diameter}%`,
 
-                height:
-                    `${diameter}%`,
+        height: `${diameter}%`,
 
-                /*
-                 * Fake 3D wobble
-                 */
-                transform: `
+        /*
+         * Fake 3D wobble
+         */
+        transform: `
                     rotate(${cell.wobble}deg)
-                    scale(${
-                        cell.found
-                            ? 1.5
-                            : 1
-                    })
+                    scale(${cell.found ? 1.5 : 1})
                 `,
 
-                borderRadius:
-                    cell.bad
-                        ? "62% 38% 55% 45% / 48% 62% 38% 52%"
-                        : "50%",
+        borderRadius: cell.bad ? "62% 38% 55% 45% / 48% 62% 38% 52%" : "50%",
 
-                background:
-                    cell.bad
-                        ? badBackground
-                        : goodBackground,
+        background: cell.bad ? badBackground : goodBackground,
 
-                boxShadow:
-                    hint
-                        ? `
+        boxShadow: hint
+          ? `
                             0 0 0 3px rgba(255,255,255,.85),
                             0 0 28px rgba(251,113,133,.95),
                             inset 3px 4px 9px rgba(255,255,255,.25),
                             inset -5px -7px 12px rgba(0,0,0,.35)
                         `
-                        : `
+          : `
                             0 7px 12px rgba(0,0,0,.38),
                             0 0 14px rgba(79,227,200,.24),
                             inset 3px 4px 8px rgba(255,255,255,.25),
                             inset -5px -7px 11px rgba(0,0,0,.30)
                         `,
-            }}
-        >
-            {/* =================================
+      }}
+    >
+      {/* =================================
                 Bottom Depth
             ================================= */}
 
-            <div
-                className="
+      <div
+        className="
                     pointer-events-none
                     absolute
                     bottom-[7%]
@@ -1550,14 +1183,14 @@ function Cell({
                     bg-black/25
                     blur-[3px]
                 "
-            />
+      />
 
-            {/* =================================
+      {/* =================================
                 Nucleus
             ================================= */}
 
-            <div
-                className="
+      <div
+        className="
                     pointer-events-none
                     relative
                     flex
@@ -1565,30 +1198,20 @@ function Cell({
                     justify-center
                     shadow-[inset_2px_2px_4px_rgba(255,255,255,0.14),inset_-3px_-4px_5px_rgba(0,0,0,0.35)]
                 "
-                style={{
-                    width:
-                        cell.bad
-                            ? "43%"
-                            : "35%",
+        style={{
+          width: cell.bad ? "43%" : "35%",
 
-                    height:
-                        cell.bad
-                            ? "35%"
-                            : "35%",
+          height: cell.bad ? "35%" : "35%",
 
-                    borderRadius:
-                        cell.bad
-                            ? "58% 42% 60% 40% / 50% 62% 38% 50%"
-                            : "50%",
+          borderRadius: cell.bad ? "58% 42% 60% 40% / 50% 62% 38% 50%" : "50%",
 
-                    background:
-                        cell.bad
-                            ? "radial-gradient(circle at 30% 25%, #3ebbac, #176d66 55%, #073d3a)"
-                            : "radial-gradient(circle at 30% 25%, #52cabb, #218f84 55%, #0c544e)",
-                }}
-            >
-                <div
-                    className="
+          background: cell.bad
+            ? "radial-gradient(circle at 30% 25%, #3ebbac, #176d66 55%, #073d3a)"
+            : "radial-gradient(circle at 30% 25%, #52cabb, #218f84 55%, #0c544e)",
+        }}
+      >
+        <div
+          className="
                         absolute
                         left-[18%]
                         top-[15%]
@@ -1598,17 +1221,17 @@ function Cell({
                         bg-white/20
                         blur-[1px]
                     "
-                />
-            </div>
+        />
+      </div>
 
-            {/* =================================
+      {/* =================================
                 Surface Highlight
 
                 ทำให้ดูเหมือนวัตถุทรงกลม
             ================================= */}
 
-            <div
-                className="
+      <div
+        className="
                     pointer-events-none
                     absolute
                     left-[17%]
@@ -1620,12 +1243,12 @@ function Cell({
                     bg-white/20
                     blur-[1px]
                 "
-            />
+      />
 
-            {/* Tiny reflection */}
+      {/* Tiny reflection */}
 
-            <div
-                className="
+      <div
+        className="
                     pointer-events-none
                     absolute
                     left-[25%]
@@ -1636,7 +1259,7 @@ function Cell({
                     bg-white/60
                     blur-[0.5px]
                 "
-            />
-        </button>
-    );
+      />
+    </button>
+  );
 }

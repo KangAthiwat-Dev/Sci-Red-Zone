@@ -1,11 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { useCallback, useEffect, useState } from "react";
+
+const EVALUATION_URL = "https://forms.gle/3jAXP3Q6dqLqLiJw6";
 
 // ========================================
 // Types
@@ -46,30 +44,25 @@ export default function StartScreen({
    */
   backgroundImage = "/images/hero.PNG",
 }: StartScreenProps) {
-  const [
-    leaving,
-    setLeaving,
-  ] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  const [evaluationOpen, setEvaluationOpen] = useState(false);
 
   // ========================================
   // Start
   // ========================================
 
-  const handleStart =
-    useCallback(() => {
-      if (leaving) {
-        return;
-      }
+  const handleStart = useCallback(() => {
+    if (leaving) {
+      return;
+    }
 
-      setLeaving(true);
+    setLeaving(true);
 
-      window.setTimeout(() => {
-        onStart();
-      }, 600);
-    }, [
-      leaving,
-      onStart,
-    ]);
+    window.setTimeout(() => {
+      onStart();
+    }, 600);
+  }, [leaving, onStart]);
 
   // ========================================
   // Keyboard
@@ -80,34 +73,20 @@ export default function StartScreen({
       return;
     }
 
-    const handleKey = (
-      event: KeyboardEvent,
-    ) => {
-      if (
-        event.code === "Enter" ||
-        event.code === "Space"
-      ) {
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.code === "Enter" || event.code === "Space") {
         event.preventDefault();
 
         handleStart();
       }
     };
 
-    window.addEventListener(
-      "keydown",
-      handleKey,
-    );
+    window.addEventListener("keydown", handleKey);
 
     return () => {
-      window.removeEventListener(
-        "keydown",
-        handleKey,
-      );
+      window.removeEventListener("keydown", handleKey);
     };
-  }, [
-    leaving,
-    handleStart,
-  ]);
+  }, [leaving, handleStart]);
 
   // ========================================
   // Render
@@ -127,11 +106,7 @@ export default function StartScreen({
         duration-[600ms]
         ease-out
 
-        ${
-          leaving
-            ? "pointer-events-none opacity-0"
-            : "opacity-100"
-        }
+        ${leaving ? "pointer-events-none opacity-0" : "opacity-100"}
       `}
     >
       {/* =================================
@@ -201,6 +176,71 @@ export default function StartScreen({
       </style>
 
       {/* =================================
+    EVALUATION BUTTON
+================================= */}
+
+      <button
+        type="button"
+        onClick={() => {
+          setEvaluationOpen(true);
+        }}
+        className="
+    group
+    absolute
+    right-5
+    top-5
+    z-40
+
+    flex
+    items-center
+    gap-2
+
+    rounded-lg
+    border
+    border-emerald-400/25
+
+    bg-black/70
+
+    px-4
+    py-2.5
+
+    font-mono
+    text-[11px]
+    font-semibold
+
+    uppercase
+    tracking-[0.15em]
+
+    text-emerald-200
+
+    backdrop-blur-sm
+
+    transition-all
+    duration-200
+
+    hover:border-emerald-300/60
+    hover:bg-emerald-950/40
+    hover:text-white
+  "
+      >
+        {/* Icon */}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M9 11l3 3L22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+        แบบประเมิน
+      </button>
+
+      {/* =================================
           LEFT HERO IMAGE
       ================================= */}
 
@@ -217,8 +257,7 @@ export default function StartScreen({
           lg:w-[60%]
         "
         style={{
-          animation:
-            "srz-image-enter 1.4s ease-out both",
+          animation: "srz-image-enter 1.4s ease-out both",
         }}
       >
         <Image
@@ -362,8 +401,7 @@ export default function StartScreen({
             md:max-w-[650px]
           "
           style={{
-            animation:
-              "srz-menu-enter 1s ease-out 0.2s both",
+            animation: "srz-menu-enter 1s ease-out 0.2s both",
           }}
         >
           {/* Eyebrow */}
@@ -407,8 +445,7 @@ export default function StartScreen({
               drop-shadow-[0_5px_24px_rgba(0,0,0,0.8)]
             "
             style={{
-              animation:
-                "srz-title-enter 1s ease-out 0.35s both",
+              animation: "srz-title-enter 1s ease-out 0.35s both",
             }}
           >
             {title}
@@ -634,8 +671,7 @@ export default function StartScreen({
               sm:text-[11px]
             "
             style={{
-              animation:
-                "srz-hint 2.5s ease-in-out infinite",
+              animation: "srz-hint 2.5s ease-in-out infinite",
             }}
           >
             {hint}
@@ -692,6 +728,233 @@ export default function StartScreen({
       >
         SCI RED ZONE
       </div>
+
+      {/* =================================
+    EVALUATION MODAL
+================================= */}
+
+      {evaluationOpen && (
+        <div
+          className="
+      fixed
+      inset-0
+      z-[100]
+
+      flex
+      items-center
+      justify-center
+
+      bg-black/80
+
+      px-5
+    "
+          onMouseDown={() => {
+            setEvaluationOpen(false);
+          }}
+        >
+          <div
+            className="
+        relative
+
+        w-full
+        max-w-[430px]
+
+        rounded-2xl
+        border
+        border-emerald-400/20
+
+        bg-[#080b09]
+
+        p-7
+
+        text-center
+
+        shadow-[0_30px_100px_rgba(0,0,0,0.8)]
+      "
+            onMouseDown={(event) => {
+              /*
+               * กดภายใน Modal
+               * ไม่ให้ Modal ปิด
+               */
+              event.stopPropagation();
+            }}
+          >
+            {/* =============================
+          Close
+      ============================= */}
+
+            <button
+              type="button"
+              onClick={() => {
+                setEvaluationOpen(false);
+              }}
+              className="
+          absolute
+          right-4
+          top-4
+
+          flex
+          h-9
+          w-9
+
+          items-center
+          justify-center
+
+          rounded-full
+
+          text-xl
+          text-zinc-500
+
+          transition
+
+          hover:bg-white/5
+          hover:text-white
+        "
+              aria-label="ปิดแบบประเมิน"
+            >
+              ×
+            </button>
+
+            {/* =============================
+          Header
+      ============================= */}
+
+            <p
+              className="
+          font-mono
+          text-[10px]
+          font-semibold
+          uppercase
+          tracking-[0.35em]
+          text-emerald-500
+        "
+            >
+              SCI RED ZONE
+            </p>
+
+            <h2
+              className="
+          mt-2
+          text-2xl
+          font-bold
+          text-white
+        "
+            >
+              แบบประเมินความพึงพอใจ
+            </h2>
+
+            <p
+              className="
+          mt-2
+          text-sm
+          leading-6
+          text-zinc-400
+        "
+            >
+              สแกน QR Code หรือกดปุ่มด้านล่าง เพื่อทำแบบประเมิน
+            </p>
+
+            {/* =============================
+          QR CODE
+      ============================= */}
+
+            <div
+              className="
+          mx-auto
+          mt-6
+
+          flex
+          w-fit
+
+          items-center
+          justify-center
+
+          rounded-xl
+
+          bg-white
+
+          p-3
+        "
+            >
+              <Image
+                src="/images/evaluation-qr.jpg"
+                alt="QR Code แบบประเมิน SCI RED ZONE"
+                width={210}
+                height={210}
+                className="
+            h-[210px]
+            w-[210px]
+            object-contain
+          "
+              />
+            </div>
+
+            {/* =============================
+          Direct Link
+      ============================= */}
+
+            <a
+              href={EVALUATION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="
+          mt-6
+
+          flex
+          h-12
+          w-full
+
+          items-center
+          justify-center
+          gap-2
+
+          rounded-lg
+
+          bg-emerald-500
+
+          font-mono
+          text-sm
+          font-bold
+
+          text-black
+
+          transition
+
+          hover:bg-emerald-400
+        "
+            >
+              เปิดแบบประเมิน
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14 3h7v7" />
+                <path d="M10 14 21 3" />
+                <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+              </svg>
+            </a>
+
+            <p
+              className="
+          mt-4
+          font-mono
+          text-[9px]
+          uppercase
+          tracking-[0.2em]
+          text-zinc-600
+        "
+            >
+              ขอบคุณสำหรับความคิดเห็น
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

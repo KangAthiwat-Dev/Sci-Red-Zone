@@ -485,9 +485,8 @@ export default function DNAPuzzle({ onComplete, onClose }: DNAPuzzleProps) {
                 items-center
                 justify-center
                 overflow-hidden
-                bg-black/55
-                p-6
-                backdrop-blur-[2px]
+                bg-black/80
+p-6
             "
     >
       {/* =================================
@@ -517,30 +516,28 @@ export default function DNAPuzzle({ onComplete, onClose }: DNAPuzzleProps) {
 
         <div
           className="
-                        pointer-events-none
-                        absolute
-                        -left-20
-                        -top-24
-                        h-72
-                        w-72
-                        rounded-full
-                        bg-blue-600/15
-                        blur-3xl
-                    "
+    pointer-events-none
+    absolute
+    -left-20
+    -top-24
+    h-72
+    w-72
+    rounded-full
+    bg-[radial-gradient(circle,rgba(37,99,235,0.12)_0%,transparent_70%)]
+  "
         />
 
         <div
           className="
-                        pointer-events-none
-                        absolute
-                        -bottom-24
-                        -right-20
-                        h-64
-                        w-64
-                        rounded-full
-                        bg-fuchsia-500/10
-                        blur-3xl
-                    "
+    pointer-events-none
+    absolute
+    -bottom-24
+    -right-20
+    h-64
+    w-64
+    rounded-full
+    bg-[radial-gradient(circle,rgba(217,70,239,0.08)_0%,transparent_70%)]
+  "
         />
 
         {/* =================================

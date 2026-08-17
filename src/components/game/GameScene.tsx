@@ -43,6 +43,9 @@ import { InteractionLockProvider } from "./interactions/InteractionLockContext";
 import SceneMusic from "./audio/SceneMusic";
 import DamageOverlay from "./damage/DamageOverlay";
 import GameOverOverlay from "./damage/GameOverOverlay";
+import FpsDebug from "./debug/FpsDebug";
+import GpuSpikeDebug from "./debug/GpuSpikeDebug";
+import GpuWarmup from "./debug/GpuWarmup";
 
 const MODEL_BOXWOOD_POSITION: [number, number, number] = [46, 1.65, -1.2];
 
@@ -124,6 +127,16 @@ export default function GameScene() {
     antidoteInteractionActive ||
     endingStarted ||
     gameOver;
+
+  /*
+ * Pause Rapier เฉพาะตอนเปิด Puzzle UI
+ *
+ * ตัว Puzzle เป็น DOM/UI อยู่นอก Physics
+ * จึงยังทำงานตามปกติ
+ */
+const physicsPaused =
+  stairwayWirePuzzleOpen ||
+  activeLabPuzzle !== null;
 
   function startMapExitTransition() {
     if (mapTransitionBusyRef.current) {
@@ -471,6 +484,10 @@ export default function GameScene() {
           far: 200,
         }}
       >
+        <GpuSpikeDebug />
+
+        <GpuWarmup enabled={currentMap.id === "stairway"} />
+
         {currentMap.id === "faculty-hall" && <HallLighting />}
         {currentMap.id === "stairway" && <StairwayLighting />}
         {currentMap.id === "laboratory" && <LaboratoryLighting />}
@@ -485,7 +502,7 @@ export default function GameScene() {
             setReady={setMapAssetsReady}
           >
             <InteractionLockProvider locked={interactionUiLocked}>
-              <Physics gravity={[0, -18, 0]} debug={false}>
+              <Physics gravity={[0, -18, 0]} debug={false} paused={physicsPaused}>
                 <GameMap
                   key={`map-${currentMap.id}`}
                   map={currentMap}
@@ -710,6 +727,8 @@ export default function GameScene() {
           </MapAssetGate>
         </Suspense>
       </Canvas>
+
+      <FpsDebug />
 
       <GameHUD
         health={playerHealth}

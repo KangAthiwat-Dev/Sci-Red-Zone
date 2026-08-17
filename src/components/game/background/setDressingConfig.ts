@@ -44,13 +44,6 @@ export const SCENE_DRESSING: SceneDecorationMap = {
   // ========================================
 
   "faculty-hall": [
-    {
-      id: "hall-door-01",
-      src: "/decorations/doors/auto_slide_door.png",
-      position: [-18, 3.3, -6],
-      size: [8, 6],
-    },
-
     // Windows
     {
       id: "hall-window-01",
@@ -81,15 +74,6 @@ export const SCENE_DRESSING: SceneDecorationMap = {
       src: "/decorations/windows/break_window_verti.png",
       position: [4, 5, -9.8],
       size: [4.4, 6.6],
-    },
-
-    // Boxs
-    {
-      id: "hall-box-01",
-      src: "/decorations/box/box.png",
-      position: [2, 1.5, -4.8],
-      size: [4.4, 3],
-      rotation: [0, 0, 0],
     },
 
     // Pipe
@@ -197,8 +181,8 @@ export const SCENE_DRESSING: SceneDecorationMap = {
     {
       id: "escape-system-control-01",
       src: "/decorations/machine/system_contrl.png",
-      position: [22, 4, -2],
-      size: [9, 8],
+      position: [22, 3, -3],
+      size: [5, 6],
       rotation: [0, 0, 0],
     },
   ],

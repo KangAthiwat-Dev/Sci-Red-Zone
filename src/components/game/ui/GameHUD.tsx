@@ -84,7 +84,7 @@ export default function GameHUD({
     w-[clamp(150px,20vw,210px)]
 
     md:left-4
-    md:top-4
+    md:top-15
         "
       >
         <div
@@ -273,13 +273,15 @@ export default function GameHUD({
             gap-y-1.5
           "
         >
-          <ControlChip keys="A / D" action="เดิน" />
+          <ControlChip keys="A/D" action="เดิน" />
 
-          <ControlChip keys="Shift + A / D" action="วิ่ง" />
+          <ControlChip keys="Shift + A/D" action="วิ่ง" />
 
           <ControlChip keys="Space" action="กระโดด" />
 
-          <ControlChip keys="C / Ctrl" action="ย่อ" />
+          <ControlChip keys="C/Ctrl" action="ย่อ" />
+
+          <ControlChip keys="Shift + A/D + C/Ctrl" action="สไลด์" />
 
           <ControlChip keys="E" action="โต้ตอบ" />
         </div>

@@ -8,76 +8,54 @@ import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 
 export default function StairwayCollision() {
-    // ==============================
-    // Visual Map
-    // ==============================
+  // ==============================
+  // Visual Map
+  // ==============================
 
-    const visual = useGLTF(
-        "/maps/stairway/visual.glb",
-    );
+  const visual = useGLTF("/maps/stairway/visual.glb");
 
-    // ==============================
-    // Collision Map
-    // ==============================
+  // ==============================
+  // Collision Map
+  // ==============================
 
-    const collision = useGLTF(
-        "/maps/stairway/collision.glb",
-    );
+  const collision = useGLTF("/maps/stairway/collision.glb");
 
-    // ==============================
-    // Shadow settings
-    // ==============================
+  // ==============================
+  // Shadow settings
+  // ==============================
 
-    useEffect(() => {
-        visual.scene.traverse((object) => {
-            if (
-                object instanceof THREE.Mesh ||
-                object instanceof
-                    THREE.SkinnedMesh
-            ) {
-                object.castShadow = true;
-                object.receiveShadow = true;
-            }
-        });
-    }, [visual.scene]);
+  useEffect(() => {
+    visual.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.castShadow = false;
+        object.receiveShadow = false;
+        object.frustumCulled = true;
+      }
+    });
+  }, [visual.scene]);
 
-    return (
-        <>
-            {/* =========================
+  return (
+    <>
+      {/* =========================
                 Visual Map
             ========================= */}
 
-            <primitive
-                object={visual.scene}
-            />
+      <primitive object={visual.scene} />
 
-            {/* =========================
+      {/* =========================
                 Physics Collision
 
                 ซ่อน mesh collision
                 แต่ยังให้ Rapier ใช้งาน
             ========================= */}
 
-            <RigidBody
-                type="fixed"
-                colliders="trimesh"
-                includeInvisible
-            >
-                <primitive
-                    object={
-                        collision.scene
-                    }
-                    visible={false}
-                />
-            </RigidBody>
-        </>
-    );
+      <RigidBody type="fixed" colliders="trimesh" includeInvisible>
+        <primitive object={collision.scene} visible={false} />
+      </RigidBody>
+    </>
+  );
 }
 
-useGLTF.preload(
-    "/maps/stairway/visual.glb",
-);
+useGLTF.preload("/maps/stairway/visual.glb");
 
-useGLTF.preload(
-    "/maps/stairway/collision.glb",
-);
+useGLTF.preload("/maps/stairway/collision.glb");
