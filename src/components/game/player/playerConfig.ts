@@ -4,8 +4,8 @@ import { PLAYER_MODEL_SCALE } from "./PlayerModel";
 // Movement
 // ==============================
 
-export const JOG_SPEED = 6.5;
-export const RUN_SPEED = 12.5;
+export const JOG_SPEED = 5.5;
+export const RUN_SPEED = 8.5;
 export const CROUCH_SPEED = 2.5;
 
 export const JUMP_SPEED = 8.5;

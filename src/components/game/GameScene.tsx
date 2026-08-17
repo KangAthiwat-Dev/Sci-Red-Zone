@@ -40,6 +40,7 @@ import GameHUD from "./ui/GameHUD";
 import GameLoadingScreen from "./ui/GameLoadingScreen";
 import EscapeScanDisplay from "./escape/EscapeScanDisplay";
 import { InteractionLockProvider } from "./interactions/InteractionLockContext";
+import SceneMusic from "./audio/SceneMusic";
 
 const MODEL_BOXWOOD_POSITION: [number, number, number] = [46, 1.65, -1.2];
 
@@ -349,6 +350,8 @@ export default function GameScene() {
 
   return (
     <div className="relative h-full w-full">
+      <SceneMusic mapId={currentMap.id} masterVolume={0.7} />
+
       <Canvas
         shadows
         dpr={1}
@@ -606,19 +609,35 @@ export default function GameScene() {
             id: "keycard",
             label: "Keycard",
             shortLabel: "KC",
-            acquired: false,
+            acquired: stairwayProgress.keycardCollected,
           },
+
+          {
+            id: "dna-data",
+            label: "DNA Data",
+            shortLabel: "DNA",
+            acquired: dnaCompleted,
+          },
+
+          {
+            id: "cell-data",
+            label: "Cell Data",
+            shortLabel: "CELL",
+            acquired: cellCompleted,
+          },
+
+          {
+            id: "formula",
+            label: "Chemical Formula",
+            shortLabel: "CHEM",
+            acquired: chemicalCompleted,
+          },
+
           {
             id: "antidote",
             label: "Antidote",
             shortLabel: "MED",
-            acquired: false,
-          },
-          {
-            id: "sample",
-            label: "Sample",
-            shortLabel: "DNA",
-            acquired: false,
+            acquired: antidoteCollected,
           },
         ]}
       />

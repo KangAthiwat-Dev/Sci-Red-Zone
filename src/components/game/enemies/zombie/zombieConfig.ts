@@ -33,10 +33,10 @@ export const ZOMBIE_WALK_SPEED =
     3.6;
 
 export const ZOMBIE_RUN_SPEED =
-    6.2;
+    9.8;
 
 export const ZOMBIE_CRAWL_SPEED =
-    2.3;
+    1.8;
 
 // ========================================
 // Animation Speed
