@@ -33,6 +33,53 @@ export const ESCAPE_SCAN_UI_POSITION: [
 export const ESCAPE_SCAN_DURATION =
   3500;
 
+export const ESCAPE_SCAN_COMPLETE_PERCENTAGE =
+  10;
+
 // แสดงคำเตือนก่อนปล่อย Zombie
 export const ESCAPE_WARNING_DURATION =
   1800;
+
+// ========================================
+// Escape Alert / Chase
+// ========================================
+
+export const ESCAPE_ALERT_SOUND_SRC =
+  "/sounds/effect/alert-web.mp3";
+
+export const ESCAPE_ALERT_FALLBACK_DURATION =
+  2200;
+
+export const ESCAPE_CHASE_NORMAL_ZOMBIE_POSITION:
+  [number, number, number] = [
+    5,
+    3,
+    0,
+  ];
+
+export const ESCAPE_CHASE_CRAWLER_ZOMBIE_POSITION:
+  [number, number, number] = [
+    90,
+    5,
+    0,
+  ];
+
+export const ESCAPE_ZOMBIE_INTRO_CAMERA_POSITION:
+  [number, number, number] = [
+    10,
+    4.8,
+    13,
+  ];
+
+export const ESCAPE_ZOMBIE_INTRO_CAMERA_TARGET:
+  [number, number, number] = [
+    5,
+    1.8,
+    0,
+  ];
+
+export const ESCAPE_ZOMBIE_INTRO_CAMERA_FOV =
+  20;
+
+export const ESCAPE_ZOMBIE_INTRO_CAMERA_SPEED =
+  4.5;

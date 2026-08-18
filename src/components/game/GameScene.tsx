@@ -21,6 +21,10 @@ import ChemicalPuzzle from "./lab/puzzles/ChemicalPuzzle";
 import AntidoteMachine from "./lab/interactions/AntidoteMachine";
 import EscapeControlConsole from "./escape/EscapeControlConsole";
 import type { EscapePhase } from "./escape/escapeTypes";
+import {
+  ESCAPE_CHASE_CRAWLER_ZOMBIE_POSITION,
+  ESCAPE_CHASE_NORMAL_ZOMBIE_POSITION,
+} from "./escape/escapeConfig";
 import HallLighting from "./lights/HallLighting";
 import StairwayLighting from "./lights/StairwayLighting";
 import { DEFAULT_STAIRWAY_PROGRESS } from "./stairway/stairwayTypes";
@@ -38,14 +42,18 @@ import EscapeEndingTrigger from "./escape/EscapeEndingTrigger";
 import EndingVideo from "./escape/EndingVideo";
 import GameHUD from "./ui/GameHUD";
 import GameLoadingScreen from "./ui/GameLoadingScreen";
+import EscapeAlertSound from "./escape/EscapeAlertSound";
 import EscapeScanDisplay from "./escape/EscapeScanDisplay";
+import EscapeZombieIntroCamera from "./escape/EscapeZombieIntroCamera";
 import { InteractionLockProvider } from "./interactions/InteractionLockContext";
 import SceneMusic from "./audio/SceneMusic";
+import type { SceneMusicId } from "./audio/sceneMusicConfig";
 import DamageOverlay from "./damage/DamageOverlay";
 import GameOverOverlay from "./damage/GameOverOverlay";
 import FpsDebug from "./debug/FpsDebug";
 import GpuSpikeDebug from "./debug/GpuSpikeDebug";
 import GpuWarmup from "./debug/GpuWarmup";
+import PlayerPositionDebug from "./debug/PlayerPositionDebug";
 
 const MODEL_BOXWOOD_POSITION: [number, number, number] = [46, 1.65, -1.2];
 
@@ -55,6 +63,8 @@ export default function GameScene() {
   );
 
   const [escapePhase, setEscapePhase] = useState<EscapePhase>("control");
+
+  const [escapeConsoleHolding, setEscapeConsoleHolding] = useState(false);
 
   const [activeLabPuzzle, setActiveLabPuzzle] = useState<
     "dna" | "cell" | "chemical" | null
@@ -111,20 +121,49 @@ export default function GameScene() {
 
   const [endingVideoVisible, setEndingVideoVisible] = useState(false);
 
+  const playerPositionDebugRef = useRef<{
+    x: number;
+    y: number;
+    z: number;
+  } | null>(null);
+
   const mapTransitionBusyRef = useRef(false);
 
-  const currentMap = GAME_MAPS[currentMapIndex];
+  const currentMap = (
+    GAME_MAPS[currentMapIndex] ??
+    GAME_MAPS[0]
+  )!;
 
   const isLastMap = currentMapIndex === GAME_MAPS.length - 1;
 
-  if (!currentMap) {
-    return null;
-  }
+  const escapeSequenceInteractionLocked =
+    currentMap.id === "escape" &&
+    (escapePhase === "warning" || escapePhase === "zombie-intro");
+
+  const escapeSequenceLocksPlayer =
+    currentMap.id === "escape" &&
+    (escapeConsoleHolding || escapeSequenceInteractionLocked);
+
+  const escapeSceneMusicTrackId:
+    | SceneMusicId
+    | undefined =
+    currentMap.id === "escape" && escapePhase === "chase"
+      ? "escape-chase"
+      : undefined;
+
+  const sceneMusicEnabled =
+    !endingStarted &&
+    (
+      currentMap.id !== "escape" ||
+      escapePhase === "control" ||
+      escapePhase === "chase"
+    );
 
   const interactionUiLocked =
     stairwayWirePuzzleOpen ||
     activeLabPuzzle !== null ||
     antidoteInteractionActive ||
+    escapeSequenceInteractionLocked ||
     endingStarted ||
     gameOver;
 
@@ -291,7 +330,7 @@ export default function GameScene() {
     }
   }
 
-  function startEscapeAlarm() {
+  function completeEscapeConsoleScan() {
     if (currentMap.id !== "escape") {
       return;
     }
@@ -301,12 +340,34 @@ export default function GameScene() {
     }
 
     /*
-     * เริ่ม Bio Scan
-     *
-     * ตอนนี้ Player จะถูก Lock
-     * เพราะ escapePhase === "alarm"
+     * Bio Scan ลดถึง 10%
+     * แล้วเข้าสู่ Warning
      */
-    setEscapePhase("alarm");
+    setEscapePhase("warning");
+  }
+
+  function handleEscapeAlertEnded() {
+    if (currentMap.id !== "escape") {
+      return;
+    }
+
+    if (escapePhase !== "warning") {
+      return;
+    }
+
+    setEscapePhase("zombie-intro");
+  }
+
+  function handleEscapeZombieIntroComplete() {
+    if (currentMap.id !== "escape") {
+      return;
+    }
+
+    if (escapePhase !== "zombie-intro") {
+      return;
+    }
+
+    setEscapePhase("chase");
   }
 
   useEffect(() => {
@@ -389,6 +450,8 @@ export default function GameScene() {
        */
       setEscapePhase("control");
 
+      setEscapeConsoleHolding(false);
+
       setEndingStarted(false);
 
       setEndingVideoVisible(false);
@@ -445,6 +508,8 @@ export default function GameScene() {
 
     setEndingStarted(true);
 
+    setEscapePhase("escaped");
+
     /*
      * Fade จอดำก่อน
      */
@@ -472,7 +537,20 @@ export default function GameScene() {
 
   return (
     <div className="relative h-full w-full">
-      <SceneMusic mapId={currentMap.id} masterVolume={0.7} />
+      <SceneMusic
+        mapId={currentMap.id}
+        trackId={escapeSceneMusicTrackId}
+        enabled={sceneMusicEnabled}
+        masterVolume={0.7}
+      />
+
+      <EscapeAlertSound
+        active={
+          currentMap.id === "escape" &&
+          escapePhase === "warning"
+        }
+        onEnded={handleEscapeAlertEnded}
+      />
 
       <Canvas
         shadows={false}
@@ -498,6 +576,12 @@ export default function GameScene() {
         {currentMap.id === "stairway" && <StairwayLighting />}
         {currentMap.id === "laboratory" && <LaboratoryLighting />}
         {currentMap.id === "escape" && <EscapeLighting />}
+
+        {currentMap.id === "escape" && (
+          <EscapeZombieIntroCamera
+            active={escapePhase === "zombie-intro"}
+          />
+        )}
 
         <SceneSetDressing mapId={currentMap.id} />
 
@@ -570,17 +654,16 @@ export default function GameScene() {
 
                 {currentMap.id === "escape" && (
                   <EscapeControlConsole
+                    key={`escape-console-${mapRespawnKey}`}
                     enabled={escapePhase === "control"}
-                    onActivate={startEscapeAlarm}
+                    onHoldingChange={setEscapeConsoleHolding}
+                    onComplete={completeEscapeConsoleScan}
                   />
                 )}
 
                 {currentMap.id === "escape" && (
                   <EscapeScanDisplay
-                    active={escapePhase === "alarm"}
-                    onComplete={() => {
-                      setEscapePhase("chase");
-                    }}
+                    active={escapePhase === "warning"}
                   />
                 )}
 
@@ -590,7 +673,11 @@ export default function GameScene() {
                     <EscapeEndingTrigger
                       position={currentMap.exit.position}
                       halfExtents={currentMap.exit.halfExtents}
-                      enabled={!endingStarted && !gameOver}
+                      enabled={
+                        escapePhase === "chase" &&
+                        !endingStarted &&
+                        !gameOver
+                      }
                       onEnter={startEndingSequence}
                     />
                   )}
@@ -655,14 +742,15 @@ export default function GameScene() {
                     spawnPosition={currentMap.spawnPosition}
                     damageEffectId={damageEffectId}
                     damageSlowActive={damageSlowActive}
+                    debugPositionRef={playerPositionDebugRef}
                     controlsLocked={
                       gameOver ||
                       endingStarted ||
                       stairwayWirePuzzleOpen ||
                       activeLabPuzzle !== null ||
                       antidoteInteractionActive ||
-                      mapEnterTransitionActive ||
-                      (currentMap.id === "escape" && escapePhase === "alarm")
+                      escapeSequenceLocksPlayer ||
+                      mapEnterTransitionActive
                     }
                     mapEnterTransition={{
                       active: mapEnterTransitionActive,
@@ -713,23 +801,31 @@ export default function GameScene() {
 
                 {mapAssetsReady &&
                   currentMap.id === "escape" &&
-                  escapePhase === "chase" &&
+                  (escapePhase === "zombie-intro" ||
+                    escapePhase === "chase") &&
+                  !endingStarted &&
                   !gameOver && (
                     <>
                       <ZombieEnemy
                         key={`zombie-normal-${mapRespawnKey}`}
-                        position={[10, 5, 0]}
+                        position={ESCAPE_CHASE_NORMAL_ZOMBIE_POSITION}
                         patrolDistance={5}
+                        introScream={escapePhase === "zombie-intro"}
+                        onIntroScreamComplete={
+                          handleEscapeZombieIntroComplete
+                        }
                         onAttackHit={handleZombieAttack}
                       />
 
-                      <ZombieEnemy
-                        key={`zombie-crawler-${mapRespawnKey}`}
-                        position={[90, 5, 0]}
-                        patrolDistance={4}
-                        variant="crawler"
-                        onAttackHit={handleZombieAttack}
-                      />
+                      {escapePhase === "chase" && (
+                        <ZombieEnemy
+                          key={`zombie-crawler-${mapRespawnKey}`}
+                          position={ESCAPE_CHASE_CRAWLER_ZOMBIE_POSITION}
+                          patrolDistance={4}
+                          variant="crawler"
+                          onAttackHit={handleZombieAttack}
+                        />
+                      )}
                     </>
                   )}
               </Physics>
@@ -739,6 +835,8 @@ export default function GameScene() {
       </Canvas>
 
       <FpsDebug />
+
+      <PlayerPositionDebug positionRef={playerPositionDebugRef} />
 
       <GameHUD
         health={playerHealth}

@@ -82,14 +82,14 @@ export default function HallLighting() {
                 Base Lighting
             ========================= */}
 
-      <ambientLight intensity={0.38} color="#80796f" />
+      <ambientLight intensity={0.28} color="#80796f" />
 
-      <hemisphereLight intensity={0.33} color="#a59782" groundColor="#070809" />
+      <hemisphereLight intensity={0.23} color="#a59782" groundColor="#070809" />
 
       <directionalLight
         position={[-12, 12, -8]}
-        color="#667d9e"
-        intensity={0.2}
+        color="#F2F2F2"
+        intensity={0.25}
         castShadow={false}
       />
 

@@ -1,5 +1,6 @@
 export type EscapePhase =
   | "control"
-  | "alarm"
+  | "warning"
+  | "zombie-intro"
   | "chase"
   | "escaped";

@@ -125,12 +125,12 @@ export default function EscapeLighting() {
             ================================= */}
 
             <ambientLight
-                intensity={0.38}
+                intensity={0.28}
                 color="#80796f"
             />
 
             <hemisphereLight
-                intensity={0.33}
+                intensity={0.23}
                 color="#a59782"
                 groundColor="#070809"
             />
@@ -145,8 +145,8 @@ export default function EscapeLighting() {
                     16,
                     -10,
                 ]}
-                color="#667d9e"
-                intensity={0.26}
+                color="#F2F2F2"
+                intensity={0.25}
             />
 
             {/* =================================
@@ -186,7 +186,7 @@ export default function EscapeLighting() {
 
             <CeilingLamp
                 x={115}
-                intensity={38}
+                intensity={48}
             />
 
             {/* =================================

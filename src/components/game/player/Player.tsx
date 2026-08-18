@@ -146,6 +146,14 @@ type PlayerProps = {
   };
 
   onMapEnterWalkComplete?: () => void;
+
+  debugPositionRef?: {
+    current: {
+      x: number;
+      y: number;
+      z: number;
+    } | null;
+  };
 };
 
 export default function Player({
@@ -159,6 +167,7 @@ export default function Player({
   controlsLocked = false,
   mapEnterTransition,
   onMapEnterWalkComplete,
+  debugPositionRef,
 }: PlayerProps) {
   const isPushing = pushState.active;
   const { camera } = useThree();
@@ -219,6 +228,34 @@ export default function Player({
       damageShakeTimerRef.current - safeDelta,
     );
   }
+
+  function updateDebugPosition(position: { x: number; y: number; z: number }) {
+    if (!debugPositionRef) {
+      return;
+    }
+
+    if (!debugPositionRef.current) {
+      debugPositionRef.current = {
+        x: position.x,
+        y: position.y,
+        z: position.z,
+      };
+
+      return;
+    }
+
+    debugPositionRef.current.x = position.x;
+    debugPositionRef.current.y = position.y;
+    debugPositionRef.current.z = position.z;
+  }
+
+  useEffect(() => {
+    return () => {
+      if (debugPositionRef) {
+        debugPositionRef.current = null;
+      }
+    };
+  }, [debugPositionRef]);
 
   const {
     keys,
@@ -484,6 +521,8 @@ export default function Player({
 
         changeAnimation("Idle");
 
+        updateDebugPosition(body.translation());
+
         onMapExitWalkComplete?.();
 
         return;
@@ -518,6 +557,8 @@ export default function Player({
         },
         true,
       );
+
+      updateDebugPosition(body.translation());
 
       // ============================
       // Step นี้เดินครบแล้ว
@@ -593,6 +634,8 @@ export default function Player({
           true,
         );
 
+        updateDebugPosition(body.translation());
+
         return;
       }
 
@@ -617,6 +660,8 @@ export default function Player({
         );
 
         changeAnimation("Idle");
+
+        updateDebugPosition(body.translation());
 
         onMapEnterWalkComplete?.();
 
@@ -649,6 +694,8 @@ export default function Player({
       );
 
       const enterPosition = body.translation();
+
+      updateDebugPosition(enterPosition);
 
       const enterDirection =
         currentStep.velocityX > 0 ? 1 : currentStep.velocityX < 0 ? -1 : 0;
@@ -724,6 +771,8 @@ export default function Player({
       }
 
       applyDamageCameraShake(safeDelta);
+
+      updateDebugPosition(body.translation());
 
       return;
     }
@@ -2084,6 +2133,8 @@ export default function Player({
     // Reset เมื่อตก Map
     // ============================
     const position = body.translation();
+
+    updateDebugPosition(position);
 
     const effectState = playerEffectState.current;
 

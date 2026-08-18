@@ -4,12 +4,16 @@ import { useEffect, useRef } from "react";
 
 import {
   SCENE_MUSIC,
-  type GameMapId,
   type SceneMusicConfig,
+  type SceneMusicId,
 } from "./sceneMusicConfig";
 
 type SceneMusicProps = {
   mapId: string;
+
+  trackId?: SceneMusicId;
+
+  enabled?: boolean;
 
   masterVolume?: number;
 
@@ -18,6 +22,8 @@ type SceneMusicProps = {
 
 export default function SceneMusic({
   mapId,
+  trackId,
+  enabled = true,
   masterVolume = 0.7,
   muted = false,
 }: SceneMusicProps) {
@@ -28,6 +34,20 @@ export default function SceneMusic({
   const transitionIdRef = useRef(0);
 
   const currentTrackRef = useRef<SceneMusicConfig | undefined>(undefined);
+
+  const removeUnlockHandlersRef =
+    useRef<(() => void) | null>(null);
+
+  const resolvedTrackId =
+    trackId ??
+    (mapId as SceneMusicId);
+
+  function clearUnlockHandlers() {
+    removeUnlockHandlersRef.current?.();
+
+    removeUnlockHandlersRef.current =
+      null;
+  }
 
   // ========================================
   // Fade
@@ -109,6 +129,8 @@ export default function SceneMusic({
         cancelAnimationFrame(animationFrameRef.current);
       }
 
+      clearUnlockHandlers();
+
       audio.pause();
 
       audio.src = "";
@@ -128,9 +150,13 @@ export default function SceneMusic({
       return;
     }
 
-    const config = SCENE_MUSIC[mapId as GameMapId];
+    clearUnlockHandlers();
 
-    if (!config) {
+    const config = enabled
+      ? SCENE_MUSIC[resolvedTrackId]
+      : undefined;
+
+    if (!config && !currentTrackRef.current) {
       return;
     }
 
@@ -167,6 +193,17 @@ export default function SceneMusic({
         return;
       }
 
+      if (!config) {
+        audio.pause();
+
+        audio.src = "";
+
+        currentTrackRef.current =
+          undefined;
+
+        return;
+      }
+
       // =================================
       // CHANGE TRACK
       // =================================
@@ -200,9 +237,7 @@ export default function SceneMusic({
 
           currentAudio.play().catch(() => {});
 
-          window.removeEventListener("pointerdown", unlockAudio);
-
-          window.removeEventListener("keydown", unlockAudio);
+          clearUnlockHandlers();
         }
 
         window.addEventListener("pointerdown", unlockAudio, {
@@ -212,6 +247,12 @@ export default function SceneMusic({
         window.addEventListener("keydown", unlockAudio, {
           once: true,
         });
+
+        removeUnlockHandlersRef.current = () => {
+          window.removeEventListener("pointerdown", unlockAudio);
+
+          window.removeEventListener("keydown", unlockAudio);
+        };
       }
 
       if (cancelled || transitionId !== transitionIdRef.current) {
@@ -232,7 +273,12 @@ export default function SceneMusic({
     return () => {
       cancelled = true;
     };
-  }, [mapId]);
+  }, [
+    enabled,
+    masterVolume,
+    muted,
+    resolvedTrackId,
+  ]);
 
   // ========================================
   // Volume / Mute Change

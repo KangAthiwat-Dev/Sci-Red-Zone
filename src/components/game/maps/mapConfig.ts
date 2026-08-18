@@ -66,8 +66,8 @@ export const GAME_MAPS: MapDefinition[] = [
       ],
     },
     exit: {
-      position: [144, 2, 0],
-      halfExtents: [0.5, 2, 1.5],
+      position: [143, 2, 0],
+      halfExtents: [1.5, 2, 1.5],
     },
   },
 

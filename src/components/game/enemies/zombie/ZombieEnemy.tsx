@@ -43,6 +43,10 @@ type ZombieEnemyProps = {
 
   variant?: ZombieVariant;
 
+  introScream?: boolean;
+
+  onIntroScreamComplete?: () => void;
+
   onAttackHit?: (damage: number) => void;
 };
 
@@ -72,6 +76,10 @@ export default function ZombieEnemy({
   patrolDistance = 4,
 
   variant = "normal",
+
+  introScream = false,
+
+  onIntroScreamComplete,
 
   onAttackHit,
 }: ZombieEnemyProps) {
@@ -103,6 +111,10 @@ export default function ZombieEnemy({
 
   const crawlerHitCooldownRef = useRef(0);
 
+  const introScreamStartedRef = useRef(false);
+
+  const introScreamCompletedRef = useRef(false);
+
   // ========================================
   // Audio refs
   // ========================================
@@ -111,11 +123,14 @@ export default function ZombieEnemy({
 
   const crawlerScreamAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  const onIntroScreamCompleteRef =
+    useRef(onIntroScreamComplete);
+
   /*
    * ค่า fallback ถ้า browser
    * ยังอ่านความยาวไฟล์เสียงไม่ได้
    */
-  const screamDurationRef = useRef(1.2);
+  const screamDurationRef = useRef(ZOMBIE_SCREAM_DURATION);
 
   // ========================================
   // Direction
@@ -149,6 +164,11 @@ export default function ZombieEnemy({
    */
   const [animationKey, setAnimationKey] = useState(0);
 
+  useEffect(() => {
+    onIntroScreamCompleteRef.current =
+      onIntroScreamComplete;
+  }, [onIntroScreamComplete]);
+
   // ========================================
   // Scream Audio
   // ========================================
@@ -162,7 +182,7 @@ export default function ZombieEnemy({
 
     normalAudio.preload = "auto";
 
-    normalAudio.volume = 0.65;
+    normalAudio.volume = ZOMBIE_SCREAM_VOLUME;
 
     /*
      * อ่านความยาวไฟล์เสียงจริง
@@ -294,12 +314,18 @@ export default function ZombieEnemy({
   // Start Scream
   // ========================================
 
-  function startScream() {
+  function startScream(isIntroScream = false) {
     /*
      * Crawler ไม่ร้อง
      */
     if (variant === "crawler") {
       return;
+    }
+
+    if (isIntroScream) {
+      introScreamStartedRef.current = true;
+
+      introScreamCompletedRef.current = false;
     }
 
     screamingRef.current = true;
@@ -339,6 +365,20 @@ export default function ZombieEnemy({
     );
 
     // =====================================
+    // FORCED INTRO SCREAM
+    // =====================================
+
+    if (
+      introScream &&
+      variant !== "crawler" &&
+      !introScreamStartedRef.current
+    ) {
+      alertedRef.current = true;
+
+      startScream(true);
+    }
+
+    // =====================================
     // NORMAL ZOMBIE SCREAM
     // =====================================
 
@@ -368,6 +408,15 @@ export default function ZombieEnemy({
       screamingRef.current = false;
 
       changeAnimation("run");
+
+      if (
+        introScreamStartedRef.current &&
+        !introScreamCompletedRef.current
+      ) {
+        introScreamCompletedRef.current = true;
+
+        onIntroScreamCompleteRef.current?.();
+      }
 
       return;
     }
@@ -639,7 +688,7 @@ export default function ZombieEnemy({
           // NORMAL ZOMBIE
           // =============================
 
-          startScream();
+          startScream(introScream);
         }}
       />
 

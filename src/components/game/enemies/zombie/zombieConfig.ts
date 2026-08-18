@@ -33,7 +33,7 @@ export const ZOMBIE_WALK_SPEED =
     3.6;
 
 export const ZOMBIE_RUN_SPEED =
-    13;
+    11.19;
 
 export const ZOMBIE_CRAWL_SPEED =
     1.8;
@@ -50,17 +50,17 @@ export const ZOMBIE_CRAWL_SPEED =
  */
 
 export const ZOMBIE_ATTACK_ANIMATION_SPEED =
-    1.2;
+    0.1;
 
 export const ZOMBIE_ATTACK_DURATION =
-    1.2;
+    0.1;
 
 // ========================================
 // Detection
 // ========================================
 
 export const ZOMBIE_DETECTION_RADIUS =
-    10;
+    18;
 
 export const ZOMBIE_ATTACK_RANGE =
     1;

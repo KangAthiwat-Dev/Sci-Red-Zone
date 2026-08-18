@@ -4,6 +4,10 @@ export type GameMapId =
     | "laboratory"
     | "escape";
 
+export type SceneMusicId =
+    | GameMapId
+    | "escape-chase";
+
 export type SceneMusicConfig = {
     src: string;
 
@@ -15,7 +19,7 @@ export type SceneMusicConfig = {
 };
 
 export const SCENE_MUSIC: Record<
-    GameMapId,
+    SceneMusicId,
     SceneMusicConfig
 > = {
     "faculty-hall": {
@@ -56,5 +60,15 @@ export const SCENE_MUSIC: Record<
         fadeInMs: 700,
 
         fadeOutMs: 500,
+    },
+
+    "escape-chase": {
+        src: "/sounds/music/chase-web.mp3",
+
+        volume: 0.62,
+
+        fadeInMs: 450,
+
+        fadeOutMs: 0,
     },
 };
