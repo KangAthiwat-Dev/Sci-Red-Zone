@@ -120,12 +120,12 @@ export default function LaboratoryLighting() {
             ================================= */}
 
             <ambientLight
-                intensity={0.28}
+                intensity={0.48}
                 color="#80796f"
             />
 
             <hemisphereLight
-                intensity={0.23}
+                intensity={0.43}
                 color="#a59782"
                 groundColor="#070809"
             />
@@ -141,7 +141,7 @@ export default function LaboratoryLighting() {
                     -8,
                 ]}
                 color="#F2F2F2"
-                intensity={0.25}
+                intensity={0.45}
             />
 
             {/* =================================

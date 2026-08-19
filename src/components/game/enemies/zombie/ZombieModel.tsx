@@ -29,6 +29,8 @@ import {
     ZOMBIE_MODEL_OFFSET_Y,
     ZOMBIE_MODEL_SCALE,
     ZOMBIE_MODEL_URL,
+    ZOMBIE_VISIBILITY_EMISSIVE_COLOR,
+    ZOMBIE_VISIBILITY_EMISSIVE_INTENSITY,
 } from "./zombieConfig";
 
 // ========================================
@@ -66,6 +68,47 @@ type ZombieModelProps = {
 
 const ANIMATION_FADE_DURATION =
     0.15;
+
+const visibleMaterialCache =
+    new WeakMap<
+        THREE.Material,
+        THREE.Material
+    >();
+
+function getVisibleZombieMaterial(
+    sourceMaterial: THREE.Material,
+) {
+    const cachedMaterial =
+        visibleMaterialCache.get(
+            sourceMaterial,
+        );
+
+    if (cachedMaterial) {
+        return cachedMaterial;
+    }
+
+    const visibleMaterial =
+        sourceMaterial.clone();
+
+    if (
+        visibleMaterial instanceof
+        THREE.MeshStandardMaterial
+    ) {
+        visibleMaterial.emissive.set(
+            ZOMBIE_VISIBILITY_EMISSIVE_COLOR,
+        );
+
+        visibleMaterial.emissiveIntensity =
+            ZOMBIE_VISIBILITY_EMISSIVE_INTENSITY;
+    }
+
+    visibleMaterialCache.set(
+        sourceMaterial,
+        visibleMaterial,
+    );
+
+    return visibleMaterial;
+}
 
 // ========================================
 // Animation Name Resolver
@@ -186,6 +229,17 @@ export default function ZombieModel({
                         object instanceof
                             THREE.SkinnedMesh
                     ) {
+                        object.material =
+                            Array.isArray(
+                                object.material,
+                            )
+                                ? object.material.map(
+                                      getVisibleZombieMaterial,
+                                  )
+                                : getVisibleZombieMaterial(
+                                      object.material,
+                                  );
+
                         object.castShadow =
                             true;
 

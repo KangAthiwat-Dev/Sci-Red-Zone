@@ -8,6 +8,16 @@ export const ZOMBIE_MODEL_URL =
 export const ZOMBIE_MODEL_SCALE =
     1.6;
 
+/*
+ * ยกความสว่างเฉพาะตัว Zombie โดยไม่เพิ่ม Light ในฉาก
+ * ปรับ intensity ตัวเดียวได้หากต้องการให้สว่างขึ้นหรือลง
+ */
+export const ZOMBIE_VISIBILITY_EMISSIVE_COLOR =
+    "#7a1f1f";
+
+export const ZOMBIE_VISIBILITY_EMISSIVE_INTENSITY =
+    0.35;
+
 // ปรับตัวนี้ตัวเดียวถ้า Zombie
 // หันผิดด้าน
 export const ZOMBIE_FACE_RIGHT_Y =
@@ -50,7 +60,7 @@ export const ZOMBIE_CRAWL_SPEED =
  */
 
 export const ZOMBIE_ATTACK_ANIMATION_SPEED =
-    0.95;
+    1.8;
 
 export const ZOMBIE_ATTACK_DURATION =
     0.95;
