@@ -17,6 +17,7 @@ type GameHUDProps = {
 
   objectiveTitle?: string;
   objectiveHint?: string;
+  objectiveProgressLabel?: string;
 
   items?: HudItem[];
 };
@@ -31,6 +32,7 @@ export default function GameHUD({
 
   objectiveTitle = "ESCAPE THE FACILITY",
   objectiveHint = "สำรวจพื้นที่และหาทางออก",
+  objectiveProgressLabel,
 
   items = [
     {
@@ -155,61 +157,115 @@ export default function GameHUD({
         className="
           absolute
           right-3
-          top-3
+          top-14
 
-          max-w-[min(280px,30vw)]
+          w-[calc(100vw-1.5rem)]
+          max-w-[300px]
 
-          text-right
+          overflow-hidden
+          rounded-sm
+          border
+          border-white/20
+          bg-black/85
+          shadow-[0_4px_14px_rgba(0,0,0,0.45)]
 
           md:right-4
           md:top-4
         "
       >
-        <p
+        <div
           className="
-            text-[8px]
-            font-semibold
-            uppercase
-            tracking-[0.3em]
-            text-emerald-300/80
+            relative
+            flex
+            flex-col
 
-            md:text-[9px]
+            px-3
+            py-2.5
+            pl-4
           "
         >
-          Objective
-        </p>
-
-        <h2
-          className="
-            mt-1
-
-            text-[10px]
-            font-semibold
-            uppercase
-            tracking-[0.08em]
-            text-white/90
-
-            md:text-xs
-          "
-        >
-          {objectiveTitle}
-        </h2>
-
-        {objectiveHint && (
-          <p
+          <div
             className="
-              mt-0.5
+              absolute
+              bottom-0
+              left-0
+              top-0
+              w-1
+              bg-emerald-400
+            "
+          />
 
-              text-[9px]
-              leading-relaxed
-              text-white/40
-
-              md:text-[10px]
+          <div
+            className="
+              flex
+              items-center
+              justify-between
+              gap-3
             "
           >
-            {objectiveHint}
-          </p>
-        )}
+            <p
+              className="
+                font-mono
+                text-[9px]
+                font-semibold
+                uppercase
+                tracking-[0.18em]
+                text-emerald-300
+              "
+            >
+              Objective
+            </p>
+
+            {objectiveProgressLabel && (
+              <span
+                className="
+                  border-l
+                  border-white/20
+                  pl-2
+                  font-mono
+                  text-[9px]
+                  font-semibold
+                  text-white/65
+                "
+              >
+                {objectiveProgressLabel}
+              </span>
+            )}
+          </div>
+
+          <h2
+            className="
+              mt-1.5
+
+              text-xs
+              font-semibold
+              uppercase
+              leading-snug
+              tracking-[0.06em]
+              text-white
+
+              md:text-[13px]
+            "
+          >
+            {objectiveTitle}
+          </h2>
+
+          {objectiveHint && (
+            <p
+              className="
+                mt-1
+
+                text-[10px]
+                leading-snug
+                text-white/65
+
+                md:text-[11px]
+              "
+            >
+              {objectiveHint}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* =====================================
@@ -361,6 +417,7 @@ function InventorySlot({
 }: InventorySlotProps) {
   return (
     <div
+      title={shortLabel}
       className="
         flex
         flex-col

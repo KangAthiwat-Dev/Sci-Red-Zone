@@ -85,6 +85,20 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+
+      // ========================================
+      // Menu / Evaluation Images
+      // ========================================
+
+      {
+        source: "/images/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: GAME_ASSET_CACHE,
+          },
+        ],
+      },
     ];
   },
 };

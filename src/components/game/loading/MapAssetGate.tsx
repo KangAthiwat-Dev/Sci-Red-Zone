@@ -2,6 +2,8 @@
 
 import {
     useEffect,
+    useLayoutEffect,
+    useMemo,
     type Dispatch,
     type ReactNode,
     type SetStateAction,
@@ -9,7 +11,16 @@ import {
 
 import {
     useGLTF,
+    useTexture,
 } from "@react-three/drei";
+
+import {
+    optimizeSceneDecorationTexture,
+} from "../background/sceneTextureOptimization";
+
+import {
+    getMapDecorationAssetUrls,
+} from "./gameAssetCache";
 
 // ========================================
 // Types
@@ -24,6 +35,25 @@ type MapAssetGateProps = {
 
     children: ReactNode;
 };
+
+type DecorationTextureAssetProps = {
+    src: string;
+};
+
+function DecorationTextureAsset({
+    src,
+}: DecorationTextureAssetProps) {
+    const texture = useTexture(src);
+
+    /* ตั้งค่าก่อน useTexture ส่งภาพขึ้น GPU */
+    useLayoutEffect(() => {
+        optimizeSceneDecorationTexture(
+            texture,
+        );
+    }, [texture]);
+
+    return null;
+}
 
 // ========================================
 // Map Asset Gate
@@ -46,6 +76,15 @@ export default function MapAssetGate({
     const collision =
         useGLTF(
             `/maps/${mapId}/collision.glb`,
+        );
+
+    const decorationUrls =
+        useMemo(
+            () =>
+                getMapDecorationAssetUrls(
+                    mapId,
+                ),
+            [mapId],
         );
 
     // ========================================
@@ -74,6 +113,15 @@ export default function MapAssetGate({
 
     return (
         <>
+            {decorationUrls.map(
+                (src) => (
+                    <DecorationTextureAsset
+                        key={src}
+                        src={src}
+                    />
+                ),
+            )}
+
             {children}
         </>
     );

@@ -1119,11 +1119,10 @@ function Cell({ cell, hintActive, onClick }: CellProps) {
                 select-none
                 items-center
                 justify-center
-                border
+                border-2
                 outline-none
                 transition-[opacity,filter]
                 duration-500
-                ${cell.bad ? "border-rose-200/15" : "border-cyan-100/20"}
                 ${
                   cell.found
                     ? "pointer-events-none opacity-0"
@@ -1152,16 +1151,18 @@ function Cell({ cell, hintActive, onClick }: CellProps) {
 
         background: cell.bad ? badBackground : goodBackground,
 
+        borderColor: hint
+          ? "rgba(255,255,255,.95)"
+          : cell.bad
+            ? "rgba(253,164,175,.8)"
+            : "rgba(207,250,254,.5)",
+
         boxShadow: hint
           ? `
-                            0 0 0 3px rgba(255,255,255,.85),
-                            0 0 28px rgba(251,113,133,.95),
                             inset 3px 4px 9px rgba(255,255,255,.25),
                             inset -5px -7px 12px rgba(0,0,0,.35)
                         `
           : `
-                            0 7px 12px rgba(0,0,0,.38),
-                            0 0 14px rgba(79,227,200,.24),
                             inset 3px 4px 8px rgba(255,255,255,.25),
                             inset -5px -7px 11px rgba(0,0,0,.30)
                         `,

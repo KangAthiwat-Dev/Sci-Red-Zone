@@ -1,13 +1,38 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
-
-import GameScene from "./GameScene";
 
 import MainMenu from "./ui/MainMenu";
 import IntroVideo from "./ui/IntroVideo";
 
 type GamePhase = "menu" | "intro" | "game";
+
+const GameScene = dynamic(() => import("./GameScene"), {
+  ssr: false,
+  loading: GameSceneLoading,
+});
+
+function GameSceneLoading() {
+  return (
+    <div
+      className="
+        fixed
+        inset-0
+        flex
+        items-center
+        justify-center
+        bg-black
+        font-mono
+        text-xs
+        tracking-[0.25em]
+        text-white/55
+      "
+    >
+      PREPARING GAME...
+    </div>
+  );
+}
 
 export default function GameFlow() {
   const [phase, setPhase] = useState<GamePhase>("menu");
@@ -23,6 +48,9 @@ export default function GameFlow() {
       {phase === "menu" && (
         <MainMenu
           onStart={() => {
+            /* ใช้ช่วง Intro โหลด JavaScript และ asset เริ่มต้นของเกม */
+            void import("./GameScene");
+
             /*
              * ไม่ Block การเข้า Intro
              *
@@ -111,7 +139,12 @@ export default function GameFlow() {
                 GAME
             ========================= */}
 
-      {phase === "game" && <GameScene />}
+      {phase === "game" && (
+        <GameScene
+          showPlayerPositionDebug={false}
+          showPerformanceDebug={false}
+        />
+      )}
     </>
   );
 }

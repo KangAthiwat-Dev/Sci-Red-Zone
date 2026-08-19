@@ -19,6 +19,8 @@ type ModelPrinterProps = {
   position?: [number, number, number];
 
   onPushStateChange?: (state: PushInteractionState) => void;
+
+  onPlaced?: () => void;
 };
 
 // ============================
@@ -90,6 +92,7 @@ function getPlacementProgress(currentX: number, startX: number) {
 export default function WoodenCrateModel({
   position = [14, 1.35, PRINTER_STORAGE_Z],
   onPushStateChange,
+  onPlaced,
 }: ModelPrinterProps) {
   // ========================================
   // Wooden Crate Size
@@ -190,6 +193,13 @@ export default function WoodenCrateModel({
   const isPlacedRef = useRef(false);
 
   const isPushingRef = useRef(false);
+
+  const onPlacedRef = useRef(onPlaced);
+
+  useEffect(() => {
+    onPlacedRef.current =
+      onPlaced;
+  }, [onPlaced]);
 
   const setPushing = useCallback(
     (nextPushing: boolean) => {
@@ -434,6 +444,8 @@ export default function WoodenCrateModel({
       setIsPlayerNear(false);
 
       interactionSensorRef.current?.setEnabled(false);
+
+      onPlacedRef.current?.();
 
       printer.setBodyType(rapier.RigidBodyType.KinematicPositionBased, true);
 

@@ -32,11 +32,11 @@ function isSceneMapId(
 // Decoration Cache
 // ========================================
 
-function preloadDecorationAssets(
+export function getMapDecorationAssetUrls(
     mapId: string,
-) {
+): string[] {
     if (!isSceneMapId(mapId)) {
-        return;
+        return [];
     }
 
     const decorations =
@@ -48,12 +48,22 @@ function preloadDecorationAssets(
      *
      * ใช้ Set เพื่อไม่สั่ง preload URL เดิมซ้ำ
      */
-    const textureUrls =
+    return Array.from(
         new Set(
             decorations.map(
                 (decoration) =>
                     decoration.src,
             ),
+        ),
+    );
+}
+
+function preloadDecorationAssets(
+    mapId: string,
+) {
+    const textureUrls =
+        getMapDecorationAssetUrls(
+            mapId,
         );
 
     for (

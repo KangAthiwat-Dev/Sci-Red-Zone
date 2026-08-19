@@ -541,11 +541,3 @@ export default function ZombieModel({
         </group>
     );
 }
-
-// ========================================
-// Preload
-// ========================================
-
-useGLTF.preload(
-    ZOMBIE_MODEL_URL,
-);

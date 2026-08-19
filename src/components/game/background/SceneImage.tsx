@@ -1,18 +1,14 @@
 "use client";
 
 import {
-  useEffect,
+  useLayoutEffect,
 } from "react";
 
 import {
   useTexture,
 } from "@react-three/drei";
 
-import {
-  useThree,
-} from "@react-three/fiber";
-
-import * as THREE from "three";
+import { optimizeSceneDecorationTexture } from "./sceneTextureOptimization";
 
 type SceneImageProps = {
   src: string;
@@ -53,45 +49,13 @@ export default function SceneImage({
   const texture =
     useTexture(src);
 
-  const gl =
-    useThree(
-      (state) => state.gl,
-    );
-
   // ========================================
-  // Texture Optimization + GPU Warmup
+  // Texture Optimization
   // ========================================
 
-  useEffect(() => {
-    /*
-     * Decoration พวกนี้เป็นภาพ 2D
-     * ไม่จำเป็นต้องสร้าง mipmap หลายระดับ
-     *
-     * ลดทั้ง memory และงานตอน upload
-     */
-    texture.generateMipmaps =
-      false;
-
-    texture.minFilter =
-      THREE.LinearFilter;
-
-    texture.magFilter =
-      THREE.LinearFilter;
-
-    /*
-     * บังคับส่ง Texture เข้า GPU
-     * ตั้งแต่ SceneImage mount
-     *
-     * แทนที่จะรอจน Player
-     * เดินมาเห็นภาพครั้งแรก
-     */
-    gl.initTexture(
-      texture,
-    );
-  }, [
-    gl,
-    texture,
-  ]);
+  useLayoutEffect(() => {
+    optimizeSceneDecorationTexture(texture);
+  }, [texture]);
 
   return (
     <mesh

@@ -82,6 +82,8 @@ import { usePlayerJumpLanding } from "./systems/playerJumpLanding";
 import { usePlayerLedgeTraversal } from "./systems/playerLedgeTraversal";
 import { usePlayerInput } from "./usePlayerInput";
 import { PUSH_PLAYER_SPEED } from "../interactions/push/pushConfig";
+import { OBJECTIVE_EVENTS } from "../objectives/objectiveConfig";
+import type { ObjectiveEventId } from "../objectives/objectiveTypes";
 
 import type { PushInteractionState } from "../interactions/push/pushTypes";
 
@@ -147,6 +149,8 @@ type PlayerProps = {
 
   onMapEnterWalkComplete?: () => void;
 
+  onObjectiveEvent?: (eventId: ObjectiveEventId) => void;
+
   debugPositionRef?: {
     current: {
       x: number;
@@ -167,6 +171,7 @@ export default function Player({
   controlsLocked = false,
   mapEnterTransition,
   onMapEnterWalkComplete,
+  onObjectiveEvent,
   debugPositionRef,
 }: PlayerProps) {
   const isPushing = pushState.active;
@@ -256,6 +261,25 @@ export default function Player({
       }
     };
   }, [debugPositionRef]);
+
+  const onObjectiveEventRef =
+    useRef(onObjectiveEvent);
+
+  const previousMovementDirectionRef =
+    useRef(0);
+
+  useEffect(() => {
+    onObjectiveEventRef.current =
+      onObjectiveEvent;
+  }, [onObjectiveEvent]);
+
+  function emitObjectiveEvent(
+    eventId: ObjectiveEventId,
+  ) {
+    onObjectiveEventRef.current?.(
+      eventId,
+    );
+  }
 
   const {
     keys,
@@ -750,6 +774,9 @@ export default function Player({
       jumpQueued.current = false;
       crouchPressed.current = false;
 
+      previousMovementDirectionRef.current =
+        0;
+
       /*
        * หยุดการเคลื่อนที่แนวนอน
        * แต่ยังให้ Gravity ทำงานได้
@@ -793,6 +820,20 @@ export default function Player({
     const isMoving = direction !== 0;
     const requestedFacingDirection: 1 | -1 | null =
       direction > 0 ? 1 : direction < 0 ? -1 : null;
+
+    if (
+      direction !== 0 &&
+      direction !== previousMovementDirectionRef.current
+    ) {
+      emitObjectiveEvent(
+        direction < 0
+          ? OBJECTIVE_EVENTS.MOVE_LEFT
+          : OBJECTIVE_EVENTS.MOVE_RIGHT,
+      );
+    }
+
+    previousMovementDirectionRef.current =
+      direction;
 
     // ============================
     // Push State Transition
@@ -910,6 +951,10 @@ export default function Player({
 
       if (isCrouching.current) {
         manualCrouchActive.current = true;
+
+        emitObjectiveEvent(
+          OBJECTIVE_EVENTS.CROUCH_OR_SLIDE,
+        );
       }
     }
 
@@ -1015,6 +1060,10 @@ export default function Player({
 
           if (isCrouching.current) {
             manualCrouchActive.current = true;
+
+            emitObjectiveEvent(
+              OBJECTIVE_EVENTS.CROUCH_OR_SLIDE,
+            );
           }
         }
       }
@@ -1121,6 +1170,11 @@ export default function Player({
       isSliding.current = true;
       slideTimer.current = 0;
       startedSlideThisFrame = true;
+
+      emitObjectiveEvent(
+        OBJECTIVE_EVENTS.CROUCH_OR_SLIDE,
+      );
+
       clearGroundTransition();
       manualCrouchActive.current = false;
       standFromManualCrouchQueued.current = false;
@@ -1431,6 +1485,10 @@ export default function Player({
         ledgeGrabCooldown.current = LEDGE_REGRAB_COOLDOWN;
 
         landingTimer.current = 0;
+
+        emitObjectiveEvent(
+          OBJECTIVE_EVENTS.CLIMB_COMPLETE,
+        );
       }
     }
 
@@ -1501,6 +1559,10 @@ export default function Player({
         highFallActive.current = false;
         landingTimer.current = 0;
         ledgeGrabCooldown.current = LEDGE_REGRAB_COOLDOWN;
+
+        emitObjectiveEvent(
+          OBJECTIVE_EVENTS.CLIMB_COMPLETE,
+        );
       }
     }
 
@@ -1852,6 +1914,10 @@ export default function Player({
 
       velocityY = JUMP_SPEED;
       jumpedThisFrame = true;
+
+      emitObjectiveEvent(
+        OBJECTIVE_EVENTS.JUMP,
+      );
 
       /*
        * กัน Double Jump

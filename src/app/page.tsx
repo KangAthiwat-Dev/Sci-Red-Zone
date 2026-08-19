@@ -1,5 +1,4 @@
 import GameFlow from "@/components/game/GameFlow";
-import GameScene from "@/components/game/GameScene";
 
 export default function Home() {
     return (

@@ -519,7 +519,7 @@ export default function ChemicalPuzzle({
                 justify-center
                 overflow-hidden
                 bg-black/80
-p-6backdrop-blur-[2px]
+                p-6
             "
     >
       {/* =================================

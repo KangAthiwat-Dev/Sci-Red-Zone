@@ -48,6 +48,8 @@ import EscapeZombieIntroCamera from "./escape/EscapeZombieIntroCamera";
 import { InteractionLockProvider } from "./interactions/InteractionLockContext";
 import SceneMusic from "./audio/SceneMusic";
 import type { SceneMusicId } from "./audio/sceneMusicConfig";
+import { OBJECTIVE_EVENTS } from "./objectives/objectiveConfig";
+import { useObjectiveTracker } from "./objectives/useObjectiveTracker";
 import DamageOverlay from "./damage/DamageOverlay";
 import GameOverOverlay from "./damage/GameOverOverlay";
 import FpsDebug from "./debug/FpsDebug";
@@ -57,7 +59,15 @@ import PlayerPositionDebug from "./debug/PlayerPositionDebug";
 
 const MODEL_BOXWOOD_POSITION: [number, number, number] = [46, 1.65, -1.2];
 
-export default function GameScene() {
+type GameSceneProps = {
+  showPlayerPositionDebug?: boolean;
+  showPerformanceDebug?: boolean;
+};
+
+export default function GameScene({
+  showPlayerPositionDebug = false,
+  showPerformanceDebug = false,
+}: GameSceneProps) {
   const [mapEnterTransitionActive, setMapEnterTransitionActive] = useState(
     () => (GAME_MAPS[0]?.enterTransition?.steps.length ?? 0) > 0,
   );
@@ -135,6 +145,12 @@ export default function GameScene() {
   )!;
 
   const isLastMap = currentMapIndex === GAME_MAPS.length - 1;
+
+  const {
+    currentObjective,
+    completeObjectiveEvent,
+    resetMapObjectives,
+  } = useObjectiveTracker(currentMap.id);
 
   const escapeSequenceInteractionLocked =
     currentMap.id === "escape" &&
@@ -253,6 +269,10 @@ export default function GameScene() {
     // ============================
 
     if (currentMap.id === "faculty-hall") {
+      completeObjectiveEvent(
+        OBJECTIVE_EVENTS.FACULTY_HALL_EXIT,
+      );
+
       startMapExitTransition();
 
       return;
@@ -294,6 +314,10 @@ export default function GameScene() {
       // พร้อมออก Scene
       // --------------------------
 
+      completeObjectiveEvent(
+        OBJECTIVE_EVENTS.STAIRWAY_EXIT,
+      );
+
       mapTransitionBusyRef.current = true;
 
       fadeToNextMap();
@@ -317,6 +341,10 @@ export default function GameScene() {
       /*
        * กัน Transition ซ้ำ
        */
+      completeObjectiveEvent(
+        OBJECTIVE_EVENTS.LAB_EXIT,
+      );
+
       mapTransitionBusyRef.current = true;
 
       /*
@@ -343,6 +371,10 @@ export default function GameScene() {
      * Bio Scan ลดถึง 10%
      * แล้วเข้าสู่ Warning
      */
+    completeObjectiveEvent(
+      OBJECTIVE_EVENTS.ESCAPE_CONSOLE_COMPLETED,
+    );
+
     setEscapePhase("warning");
   }
 
@@ -366,6 +398,10 @@ export default function GameScene() {
     if (escapePhase !== "zombie-intro") {
       return;
     }
+
+    completeObjectiveEvent(
+      OBJECTIVE_EVENTS.ESCAPE_CHASE_STARTED,
+    );
 
     setEscapePhase("chase");
   }
@@ -452,6 +488,8 @@ export default function GameScene() {
 
       setEscapeConsoleHolding(false);
 
+      resetMapObjectives(currentMap.id);
+
       setEndingStarted(false);
 
       setEndingVideoVisible(false);
@@ -474,12 +512,6 @@ export default function GameScene() {
 
   useEffect(() => {
     // ====================================
-    // Cache Enemy
-    // ====================================
-
-    preloadEnemyAssets();
-
-    // ====================================
     // Cache Map ถัดไปล่วงหน้า
     // ====================================
 
@@ -488,7 +520,12 @@ export default function GameScene() {
     if (nextMap) {
       preloadMapAssets(nextMap.id);
     }
-  }, [currentMapIndex]);
+
+    /* Zombie ใช้เฉพาะฉาก Escape จึงเริ่มโหลดระหว่างเล่น Laboratory */
+    if (nextMap?.id === "escape" || currentMap.id === "escape") {
+      preloadEnemyAssets();
+    }
+  }, [currentMap.id, currentMapIndex]);
 
   function startEndingSequence() {
     /*
@@ -509,6 +546,10 @@ export default function GameScene() {
     setEndingStarted(true);
 
     setEscapePhase("escaped");
+
+    completeObjectiveEvent(
+      OBJECTIVE_EVENTS.ESCAPE_EXIT,
+    );
 
     /*
      * Fade จอดำก่อน
@@ -568,7 +609,7 @@ export default function GameScene() {
           far: 200,
         }}
       >
-        <GpuSpikeDebug />
+        {showPerformanceDebug && <GpuSpikeDebug />}
 
         <GpuWarmup enabled={mapAssetsReady} warmupKey={currentMap.id} />
 
@@ -583,14 +624,14 @@ export default function GameScene() {
           />
         )}
 
-        <SceneSetDressing mapId={currentMap.id} />
-
         <Suspense fallback={null}>
           <MapAssetGate
             key={`map-assets-${currentMap.id}`}
             mapId={currentMap.id}
             setReady={setMapAssetsReady}
           >
+            <SceneSetDressing mapId={currentMap.id} />
+
             <InteractionLockProvider locked={interactionUiLocked}>
               <Physics
                 gravity={[0, -18, 0]}
@@ -614,12 +655,20 @@ export default function GameScene() {
                     <StairwayDoorStatus
                       progress={stairwayProgress}
                       onDoorInspected={() => {
+                        completeObjectiveEvent(
+                          OBJECTIVE_EVENTS.STAIRWAY_DOOR_INSPECTED,
+                        );
+
                         setStairwayProgress((current) => ({
                           ...current,
                           doorInspected: true,
                         }));
                       }}
                       onKeycardRequested={() => {
+                        completeObjectiveEvent(
+                          OBJECTIVE_EVENTS.KEYCARD_REQUESTED,
+                        );
+
                         setStairwayProgress((current) => ({
                           ...current,
                           keycardRequested: true,
@@ -642,6 +691,10 @@ export default function GameScene() {
                       enabled={stairwayProgress.keycardRequested}
                       collected={stairwayProgress.keycardCollected}
                       onCollected={() => {
+                        completeObjectiveEvent(
+                          OBJECTIVE_EVENTS.KEYCARD_COLLECTED,
+                        );
+
                         setStairwayProgress((current) => ({
                           ...current,
 
@@ -713,6 +766,10 @@ export default function GameScene() {
                       collected={antidoteCollected}
                       onHoldingChange={setAntidoteInteractionActive}
                       onCollected={() => {
+                        completeObjectiveEvent(
+                          OBJECTIVE_EVENTS.ANTIDOTE_COLLECTED,
+                        );
+
                         setAntidoteCollected(true);
 
                         setAntidoteInteractionActive(false);
@@ -731,6 +788,11 @@ export default function GameScene() {
                   <ModelBoxWood
                     position={MODEL_BOXWOOD_POSITION}
                     onPushStateChange={setPushState}
+                    onPlaced={() => {
+                      completeObjectiveEvent(
+                        OBJECTIVE_EVENTS.CRATE_PLACED,
+                      );
+                    }}
                   />
                 )}
 
@@ -742,7 +804,12 @@ export default function GameScene() {
                     spawnPosition={currentMap.spawnPosition}
                     damageEffectId={damageEffectId}
                     damageSlowActive={damageSlowActive}
-                    debugPositionRef={playerPositionDebugRef}
+                    debugPositionRef={
+                      showPlayerPositionDebug
+                        ? playerPositionDebugRef
+                        : undefined
+                    }
+                    onObjectiveEvent={completeObjectiveEvent}
                     controlsLocked={
                       gameOver ||
                       endingStarted ||
@@ -834,15 +901,26 @@ export default function GameScene() {
         </Suspense>
       </Canvas>
 
-      <FpsDebug />
+      {showPerformanceDebug && <FpsDebug />}
 
-      <PlayerPositionDebug positionRef={playerPositionDebugRef} />
+      {showPlayerPositionDebug && (
+        <PlayerPositionDebug positionRef={playerPositionDebugRef} />
+      )}
 
       <GameHUD
         health={playerHealth}
         maxHealth={100}
-        objectiveTitle="ESCAPE THE FACILITY"
-        objectiveHint="สำรวจพื้นที่ ค้นหาไอเทมสำคัญ และหาทางออก"
+        objectiveTitle={
+          currentObjective?.objective.title ??
+          "OBJECTIVE COMPLETE"
+        }
+        objectiveHint={
+          currentObjective?.objective.hint ??
+          "เดินหน้าต่อไป"
+        }
+        objectiveProgressLabel={
+          currentObjective?.progressLabel
+        }
         items={[
           {
             id: "keycard",
@@ -891,6 +969,10 @@ export default function GameScene() {
             setStairwayWirePuzzleOpen(false);
           }}
           onComplete={() => {
+            completeObjectiveEvent(
+              OBJECTIVE_EVENTS.WIRE_PUZZLE_COMPLETED,
+            );
+
             setStairwayProgress((current) => ({
               ...current,
               powerRestored: true,
@@ -908,6 +990,10 @@ export default function GameScene() {
             setActiveLabPuzzle(null);
           }}
           onComplete={() => {
+            completeObjectiveEvent(
+              OBJECTIVE_EVENTS.DNA_COMPLETED,
+            );
+
             setDnaCompleted(true);
 
             setActiveLabPuzzle(null);
@@ -921,6 +1007,10 @@ export default function GameScene() {
             setActiveLabPuzzle(null);
           }}
           onComplete={() => {
+            completeObjectiveEvent(
+              OBJECTIVE_EVENTS.CELL_COMPLETED,
+            );
+
             setCellCompleted(true);
 
             setActiveLabPuzzle(null);
@@ -934,6 +1024,10 @@ export default function GameScene() {
             setActiveLabPuzzle(null);
           }}
           onComplete={() => {
+            completeObjectiveEvent(
+              OBJECTIVE_EVENTS.CHEMICAL_COMPLETED,
+            );
+
             setChemicalCompleted(true);
 
             setActiveLabPuzzle(null);
@@ -985,12 +1079,14 @@ export default function GameScene() {
         mapLabel={currentMap.label}
       />
 
-      <EndingVideo
-        visible={endingVideoVisible}
-        onEnded={() => {
-          window.location.reload();
-        }}
-      />
+      {currentMap.id === "escape" && (
+        <EndingVideo
+          visible={endingVideoVisible}
+          onEnded={() => {
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

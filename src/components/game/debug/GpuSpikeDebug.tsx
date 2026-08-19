@@ -1,21 +1,30 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
+import { useRef } from "react";
 
 export default function GpuSpikeDebug() {
+    const lastLogTimeRef = useRef(0);
+
     useFrame(({ gl }, delta) => {
         const frameMs =
             delta * 1000;
 
         /*
-         * เกมปกติ 120 FPS
-         * ≈ 8.3 ms
-         *
-         * log เฉพาะเฟรมที่ spike
+         * รายงานเฉพาะเฟรมที่ต่ำกว่า 30 FPS
+         * และจำกัดไม่เกินหนึ่งครั้งต่อวินาที
          */
-        if (frameMs < 14) {
+        if (frameMs < 34) {
             return;
         }
+
+        const now = performance.now();
+
+        if (now - lastLogTimeRef.current < 1000) {
+            return;
+        }
+
+        lastLogTimeRef.current = now;
 
         console.log(
             "[GPU FRAME SPIKE]",

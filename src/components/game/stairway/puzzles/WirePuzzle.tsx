@@ -327,7 +327,6 @@ export default function WirePuzzle({ onComplete, onClose }: WirePuzzleProps) {
         items-center
         justify-center
         bg-black/80
-        backdrop-blur-sm
       "
     >
       <div
